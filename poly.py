@@ -20,6 +20,10 @@ class Polynomial:
         if len(self.coefficients.shape)!=1:
             raise ValueError("Polynomial coefficients must be one-dimensional arrays; given coefficients of shape %s" % self.coefficients.shape)
 
+    def __eq__(self,other):
+        return (isinstance(other, Polynomial) 
+                and self.basis==other.basis 
+                and np.all(self.coefficients==other.coefficients))
     def __call__(self, x):
         return self.basis.evaluate(self.coefficients, x)
 
@@ -66,6 +70,19 @@ class Polynomial:
             return Polynomial(self.basis,q), Polynomial(self.basis,r)
         else:
             return (1./other)*self, Polynomial(self.basis,[])
+
+    def __floordiv__(self, other):
+        q, r = divmod(self, other)
+        return q
+    def __mod__(self, other):
+        q, r = divmod(self, other)
+        return r
+    def __truediv__(self, other):
+        if isinstance(other, Polynomial):
+            raise ValueError("Cannot do true division by polynomials")
+        return (1./other)*self
+    def __rtruediv__(self,other):
+        raise ValueError("Cannot do true division by polynomials")
 
 class Basis:
     """Abstract base class for polynomial bases.

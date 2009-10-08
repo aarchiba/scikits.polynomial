@@ -113,3 +113,5 @@ def check_divmod(p1, p2):
     for x in np.arange(8):
         assert len(r.coefficients)<len(p2.coefficients)
         assert np.abs(p1(x)-(p2(x)*q(x)+r(x)))<1e-8
+        assert p1//p2 == q
+        assert p1%p2 == r
