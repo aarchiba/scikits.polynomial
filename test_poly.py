@@ -23,6 +23,17 @@ def check_add(basis, l1, l2, x):
     assert np.abs(p1(x)+p2(x)-(p1+p2)(x))<1e-13
     assert np.abs(p1(x)+p2(x)-(p2+p1)(x))<1e-13
 
+def test_mul():
+    yield check_add, PowerBasis(), [1,3], [2,-4,-2], -4
+    yield check_add, PowerBasis(), [], [2,-4,-2], -4
+    yield check_add, PowerBasis(), [2], [2], -4
+    yield check_add, PowerBasis(), [2,1], [-2,-1], -4
+
+def check_mul(basis, l1, l2, x):
+    p1, p2 = Polynomial(basis,l1), Polynomial(basis,l2)
+    assert np.abs(p1(x)*p2(x)-(p1*p2)(x))<1e-13
+    assert np.abs(p1(x)*p2(x)-(p2*p1)(x))<1e-13
+
 def test_scalar_mul():
     yield check_scalar_mul, PowerBasis(), [2,1], 4, -4
     yield check_scalar_mul, PowerBasis(), [], 4, -4
@@ -44,4 +55,13 @@ def test_sub():
 def check_sub(basis, l1, l2, x):
     p1, p2 = Polynomial(basis,l1), Polynomial(basis,l2)
     assert np.abs(p1(x)-p2(x)-(p1-p2)(x))<1e-13
+
+def test_lagrange_basics():
+    b = LagrangeBasis([-1,1])
+    p1 = [0,1]
+    p2 = [1,-1]
+
+    yield check_eval, b, p2, 0, 0
+    yield check_add, b, p1, p2, 0.3
+    yield check_mul, b, p1, p2, 0.3
 
