@@ -58,6 +58,15 @@ class Polynomial:
     def __repr__(self):
         return "<Polynomial basis=%s coefficients=%s>" % (self.basis, self.coefficients)
 
+    def __divmod__(self, other):
+        if isinstance(other,Polynomial):
+            if self.basis != other.basis:
+                raise ValueError("Polynomials must be in the same basis to be added")
+            q, r = self.basis.divide(self.coefficients, other.coefficients)
+            return Polynomial(self.basis,q), Polynomial(self.basis,r)
+        else:
+            return (1./other)*self, Polynomial(self.basis,[])
+
 class Basis:
     """Abstract base class for polynomial bases.
 
@@ -105,6 +114,17 @@ class Basis:
 
     def convert(self, polynomial):
         """Convert the given polynomial to this basis."""
+        raise NotImplementedError
+
+    def divide(self, coefficients, other_coefficients, tol=None):
+        """Polynomial division.
+
+        Given P1 and P2 find Q and R so that P1 = Q*P2 + R and the degree
+        of R is strictly less than the degree of P2. 
+
+        In some representations this is an approximate process; for this 
+        tol defines the tolerance.
+        """
         raise NotImplementedError
 
 class PowerBasis(Basis):
@@ -164,6 +184,31 @@ class PowerBasis(Basis):
 
     def __repr__(self):
         return "<PowerBasis center=%g>" % self.center
+
+    def divide(self, coefficients, other_coefficients, tol=None):
+        """Grade-school long division.
+        
+        Note that this algorithm assumes that leading zero coefficients are 
+        exactly zero, which may not be the case if the polynomials
+        were obtained by calculation on polynomials of higher order.
+        """
+        if len(other_coefficients)==0:
+            raise ValueError("Polynomial division by zero")
+        while other_coefficients[-1]==0 and len(other_coefficients)>1:
+            other_coefficients = other_coefficients[:-1]
+        if len(other_coefficients)==1:
+            return coefficients/other_coefficients[0], np.zeros(0)
+        if len(coefficients)<len(other_coefficients):
+            return np.zeros(0), coefficients
+
+        c = coefficients.copy()
+        q = np.zeros(len(coefficients)-len(other_coefficients)+1)
+
+        for i in range(len(q)):
+            s = c[-1-i]/other_coefficients[-1]
+            c[len(c)-i-len(other_coefficients):len(c)-i]-=s*other_coefficients
+            q[-1-i] = s
+        return q, c[:len(other_coefficients)-1]
 
 def bit_reverse(n):
     """Return the fraction whose binary expansion is the reverse of n

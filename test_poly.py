@@ -98,3 +98,18 @@ def check_vectorized(b):
     for shape in [(), (1,), (10,), (2,3), (2,3,5)]:
         z = np.zeros(shape)
         assert p(z).shape == shape
+
+
+def test_division_power():
+
+    for (l1,l2) in [([1,0,0,1],[1,1]),
+                    ([1,1],[1,0,0,1]),
+                    ([1,0,0,1],[1,0,0,1]),
+                    ([1,0,0,1],[1])]:
+        yield check_divmod, Polynomial(PowerBasis(),l1), Polynomial(PowerBasis(),l1)
+        
+def check_divmod(p1, p2):
+    q,r = divmod(p1,p2)
+    for x in np.arange(8):
+        assert len(r.coefficients)<len(p2.coefficients)
+        assert np.abs(p1(x)-(p2(x)*q(x)+r(x)))<1e-8
