@@ -157,7 +157,7 @@ def chebyshev_points_sequence(n):
     """The extrema of the Chebyshev polynomials, in a subrandom order."""
     # FIXME: Make sure we're using the right points.
     m, denom = bit_reverse(n)
-    return np.cos(np.pi*m/float(denom))
+    return np.cos(np.pi*(2*m+1)/float(2*denom))
 
 class LagrangeBasis:
     """This class represents a polynomial by its values at specified points.
