@@ -17,6 +17,8 @@ class Polynomial:
     def __init__(self, basis, coefficients):
         self.basis = basis
         self.coefficients = np.array(coefficients, dtype=np.float)
+        if len(self.coefficients.shape)!=1:
+            raise ValueError("Polynomial coefficients must be one-dimensional arrays; given coefficients of shape %s" % self.coefficients.shape)
 
     def __call__(self, x):
         return self.basis.evaluate(self.coefficients, x)
@@ -50,6 +52,11 @@ class Polynomial:
     def __sub__(self, other):
         return self + (-1.)*other
 
+    def derivative(self):
+        return Polynomial(self.basis,self.basis.derivative(self.coefficients))
+
+    def __repr__(self):
+        return "<Polynomial basis=%s coefficients=%s>" % (self.basis, self.coefficients)
 
 class Basis:
     """Abstract base class for polynomial bases.
@@ -84,6 +91,10 @@ class Basis:
         """Compute the coefficients of the product."""
         raise NotImplementedError
 
+    def derivative(self, coefficients):
+        """Compute the coefficients of the derivative."""
+        raise NotImplementedError
+
     def __eq__(self, other):
         """Test for equality."""
         raise NotImplementedError
@@ -92,6 +103,9 @@ class Basis:
     def __hash__(self):
         raise NotImplementedError
 
+    def convert(self, polynomial):
+        """Convert the given polynomial to this basis."""
+        raise NotImplementedError
 
 class PowerBasis(Basis):
     """The basis 1, x, x**2, ..."""
@@ -126,11 +140,30 @@ class PowerBasis(Basis):
             c[i:i+len(coefficients)] += ci*other_coefficients
         return c
 
+    def derivative(self, coefficients):
+        if len(coefficients)==0:
+            return np.zeros(0)
+        return coefficients[1:]*np.arange(1,len(coefficients))
+
     def __eq__(self, other):
         return isinstance(other, PowerBasis) and self.center == other.center
     def __hash__(self):
         return hash(self.center) # Include self's type?
 
+    def convert(self, polynomial):
+        n = len(polynomial.coefficients)
+        if n==0:
+            return Polynomial(self, [])
+        rc = np.zeros(n)
+        fact = 1
+        for i in range(n):
+            rc[i]=polynomial(self.center)/fact
+            polynomial = polynomial.derivative()
+            fact*=i+1
+        return Polynomial(self, rc)
+
+    def __repr__(self):
+        return "<PowerBasis center=%g>" % self.center
 
 def bit_reverse(n):
     """Return the fraction whose binary expansion is the reverse of n
@@ -159,7 +192,7 @@ def chebyshev_points_sequence(n):
     m, denom = bit_reverse(n)
     return np.cos(np.pi*(2*m+1)/float(2*denom))
 
-class LagrangeBasis:
+class LagrangeBasis(Basis):
     """This class represents a polynomial by its values at specified points.
 
     This is the natural representation when constructing the Lagrange
@@ -206,12 +239,10 @@ class LagrangeBasis:
     def __hash__(self):
         return hash(tuple(self.initial_points)) # Do arrays hash?
 
-    def extend(self, coefficients, n):
-        """Extend a coefficient array.
-
-        This function does two things: select new sample points if necessary,
-        and evaluate the polynomial specified by coefficients at more points.
-        """
+    def extend_points(self, n):
+        """Extend the internal list of points."""
+        if n<=len(self.points):
+            return
         a, b = self.interval
         new_points = []
         while n>len(self.points)+len(new_points):
@@ -225,12 +256,35 @@ class LagrangeBasis:
             points[:len(self.points)] = self.points
             points[len(self.points):] = np.array(new_points)
             self.points = points
+
+    def extend(self, coefficients, n):
+        """Extend a coefficient array.
+
+        This function does two things: select new sample points if necessary,
+        and evaluate the polynomial specified by coefficients at more points.
+        """
+        self.extend_points(n)
         
         new_coefficients = np.zeros(n)
         new_coefficients[:len(coefficients)] = coefficients
         if n>len(coefficients):
             new_coefficients[len(coefficients):] = self.evaluate(coefficients, self.points[len(coefficients):])
         return new_coefficients
+
+    def weights(self, n=None):
+        if n is None:
+            n=len(self.points)
+        self.extend_points(n)
+        # FIXME: might be worth caching the weights
+        # FIXME: if we use Chebyshev points, there's an analytic formula
+        w = np.zeros(n)
+        w[0] = 1
+        for j in range(1,n):
+            w[:j] *= self.points[:j]-self.points[j]
+            w[j] = np.prod(self.points[j]-self.points[:j])
+        w = 1./w
+        return w
+
 
     def evaluate(self, coefficients, x):
         """Evaluate a polynomial at a new point.
@@ -240,23 +294,24 @@ class LagrangeBasis:
         nor does the code use the analytic expression for the weights in
         the case that the points are Chebyshev points.
         """
+        self.extend_points(len(coefficients))
         if not np.isscalar(x):
             x = np.asarray(x)
             r = np.zeros(x.shape)
-            r.flat = [self.evaluate(coefficients, xi) for xi in x.flat]
-        # FIXME: might be worth caching the weights
-        # FIXME: if we use Chebyshev points, there's an analytic formula
+            for (ix, v) in np.ndenumerate(x):
+                r[ix] = self.evaluate(coefficients, v)
+            return r
+
+
+        # special case for when x is one of the given points
         if len(coefficients)==0:
             return 0.
-        w = np.zeros(len(coefficients))
-        w[0] = 1
-        for j in range(1,len(coefficients)):
-            w[:j] *= self.points[:j]-self.points[j]
-            w[j] = np.prod(self.points[j]-self.points[:j])
-        w = 1./w
+        c = x==self.points[:len(coefficients)]
+        if np.any(c):
+            i = np.where(c)[0][0]
+            return coefficients[i]
 
-        # FIXME: when x is one of the points
-        # FIXME: when x is an array
+        w = self.weights(len(coefficients))
         wx = w/(x-self.points[:len(coefficients)])
         return np.sum(wx*coefficients)/np.sum(wx)
 
@@ -273,3 +328,28 @@ class LagrangeBasis:
         other_coefficients = self.extend(other_coefficients, l)
         return coefficients*other_coefficients
     
+    def derivative_matrix(self, n):
+        self.extend_points(n)
+        w = self.weights(n)
+        x = self.points[:n]
+        D = (w/w[:,np.newaxis])/(x[:,np.newaxis]-x)
+        D[np.arange(n),np.arange(n)] = 0
+        D[np.arange(n),np.arange(n)] = -np.sum(D,axis=1)
+        return D
+
+    def derivative(self, coefficients):
+        if len(coefficients)==0:
+            return np.zeros(0)
+
+        c = np.dot(self.derivative_matrix(len(coefficients)),coefficients)
+        return c[:-1]
+
+    def convert(self, polynomial):
+        n = len(polynomial.coefficients)
+        if n==0:
+            return Polynomial(self, [])
+        self.extend_points(n)
+        return Polynomial(self, polynomial(self.points[:n]))
+
+    def __repr__(self):
+        return "<LagrangeBasis initial_points=%s>" % (self.initial_points,)

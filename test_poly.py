@@ -45,6 +45,15 @@ def check_scalar_mul(basis, l, c, x):
     assert np.abs(c*p(x)-(c*p)(x))<1e-13
     assert np.abs(c*p(x)-(p*c)(x))<1e-13
 
+def test_deriv_power():
+    p = Polynomial(PowerBasis(), [1,0,-1])
+    assert np.abs(p.derivative()(1)-(-2))<1e-10
+    assert np.abs(p.derivative()(5)-(-10))<1e-10
+
+def test_deriv_lagrange():
+    p = Polynomial(LagrangeBasis([-1,0,1]), [1,0,-1])
+    assert np.abs(p.derivative()(1)-(-1))<1e-10
+    assert np.abs(p.derivative()(5)-(-1))<1e-10
 
 def test_sub():
     yield check_sub, PowerBasis(), [1,3], [2,-4,-2], -4
@@ -65,3 +74,27 @@ def test_lagrange_basics():
     yield check_add, b, p1, p2, 0.3
     yield check_mul, b, p1, p2, 0.3
 
+
+def test_convert():
+    for l in [[], [8], [3,1], [1,0,0,0,1]]:
+        yield check_convert, PowerBasis(), PowerBasis(), l
+        yield check_convert, PowerBasis(), LagrangeBasis(), l
+        yield check_convert, LagrangeBasis(), PowerBasis(), l
+        yield check_convert, PowerBasis(0.2), PowerBasis(5), l
+        yield check_convert, LagrangeBasis(), LagrangeBasis([-1,0.3,1]), l
+
+def check_convert(b1, b2, l):
+    p1 = Polynomial(b1,l)
+    p2 = b2.convert(p1)
+    for x in [-1,-0.3,0,0.7,1,np.pi]:
+        assert np.abs(p1(x)-p2(x))<1e-8
+
+def test_vectorized():
+    yield check_vectorized, PowerBasis()
+    yield check_vectorized, LagrangeBasis()
+
+def check_vectorized(b):
+    p = Polynomial(b,[1,0,1])
+    for shape in [(), (1,), (10,), (2,3), (2,3,5)]:
+        z = np.zeros(shape)
+        assert p(z).shape == shape
