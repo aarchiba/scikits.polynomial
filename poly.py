@@ -36,6 +36,7 @@ class Polynomial:
                     + self.basis.extend(other.coefficients, l))
             return Polynomial(self.basis, c)
         else:
+            # FIXME: is this correct?
             return self + Polynomial(self.basis, [other])
     def __radd__(self, other):
         return self+other
@@ -143,5 +144,19 @@ class Basis:
         tol defines the tolerance.
         """
         raise NotImplementedError
+
+
+class GradedBasis(Basis):
+    """A polynomial basis in which the nth element has degree n."""
+
+    def __init__(self):
+        Basis.__init__(self)
+
+    def extend(self, coefficients, n):
+                if n<len(coefficients):
+            raise ValueError("extend can only make coefficient arrays longer")
+        z = np.zeros(n)
+        z[:len(coefficients)] = coefficients
+        return z
 
 

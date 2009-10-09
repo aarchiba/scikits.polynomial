@@ -1,20 +1,13 @@
 import numpy as np
 
-from poly import Polynomial, Basis
+from poly import Polynomial, Basis, GradedBasis
 
-class PowerBasis(Basis):
-    """The basis 1, x, x**2, ..."""
+class PowerBasis(GradedBasis):
+    """The basis 1, (x-c), (x-c)**2, ..."""
 
     def __init__(self,center=0):
         Basis.__init__(self)
         self.center = center
-
-    def extend(self, coefficients, n):
-        if n<len(coefficients):
-            raise ValueError("extend can only make coefficient arrays longer")
-        z = np.zeros(n)
-        z[:len(coefficients)] = coefficients
-        return z
 
     def evaluate(self, coefficients, x):
         x = np.asarray(x,dtype=float) - self.center
