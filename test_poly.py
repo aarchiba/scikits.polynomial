@@ -126,3 +126,29 @@ def test_polyfit_exact():
     y = [5,6,7]
     p = polyfit(x,y,1)
     assert np.abs(p(0.5)-6.5)<1e-8
+
+def test_antiderivative_lagrange():
+    b = LagrangeBasis()
+    b2 = LagrangeBasis([10,20,30])
+    for l in [[], [1], [1,2,3], [1,2,3,4,5,6]]:
+        yield check_antiderivative, Polynomial(b,l)
+        yield check_antiderivative, Polynomial(b2,l)
+
+def test_antiderivative_power():
+    b = PowerBasis()
+    b2 = PowerBasis(-13)
+    for l in [[], [1], [1,2,3], [1,2,3,4,5,6]]:
+        yield check_antiderivative, Polynomial(b,l)
+        yield check_antiderivative, Polynomial(b2,l)
+def test_antiderivative_cheb():
+    b = ChebyshevBasis()
+    b2 = ChebyshevBasis((-13,21))
+    for l in [[], [1], [1,2,3], [1,2,3,4,5,6]]:
+        yield check_antiderivative, Polynomial(b,l)
+        yield check_antiderivative, Polynomial(b2,l)
+
+def check_antiderivative(p):
+    q = p.antiderivative().derivative()
+    assert len(p.coefficients)==len(q.coefficients)
+    for x in np.linspace(-1,1,len(p.coefficients)+1):
+        assert np.abs(p(x)-q(x))<1e-8

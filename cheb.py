@@ -23,6 +23,10 @@ class ChebyshevBasis(GradedBasis):
         if len(coefficients)==0:
             return np.zeros(0)
         return chebyshev.chebder(coefficients)
+    def antiderivative(self, coefficients):
+        if len(coefficients)==0:
+            return np.zeros(0)
+        return chebyshev.chebint(coefficients)
 
     def __eq__(self, other):
         return isinstance(other, ChebyshevBasis) and self.interval==other.interval

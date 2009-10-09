@@ -19,7 +19,7 @@ class Polynomial:
         self.basis = basis
         self.coefficients = np.array(coefficients, dtype=np.float)
         if len(self.coefficients.shape)!=1:
-            raise ValueError("Polynomial coefficients must be one-dimensional arrays; given coefficients of shape %s" % self.coefficients.shape)
+            raise ValueError("Polynomial coefficients must be one-dimensional arrays; given coefficients of shape %s" % (self.coefficients.shape,))
 
     def __eq__(self,other):
         return (isinstance(other, Polynomial) 
@@ -60,6 +60,8 @@ class Polynomial:
 
     def derivative(self):
         return Polynomial(self.basis,self.basis.derivative(self.coefficients))
+    def antiderivative(self):
+        return Polynomial(self.basis,self.basis.antiderivative(self.coefficients))
 
     def __repr__(self):
         return "<Polynomial basis=%s coefficients=%s>" % (self.basis, self.coefficients)
@@ -121,6 +123,15 @@ class Basis:
 
     def derivative(self, coefficients):
         """Compute the coefficients of the derivative."""
+        raise NotImplementedError
+
+    def antiderivative(self, coefficients):
+        """Compute the coefficients of an antiderivative.
+        
+        The antiderivative is defined up to a constant; the choice
+        of constant used for this function is generally arbitrary,
+        but some bases may provide a well-defined value.
+        """
         raise NotImplementedError
 
     def __eq__(self, other):

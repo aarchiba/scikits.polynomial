@@ -32,6 +32,12 @@ class PowerBasis(GradedBasis):
         if len(coefficients)==0:
             return np.zeros(0)
         return coefficients[1:]*np.arange(1,len(coefficients))
+    def antiderivative(self, coefficients):
+        if len(coefficients)==0:
+            return np.zeros(1)
+        c = np.zeros(len(coefficients)+1)
+        c[1:] = coefficients/np.arange(1,len(coefficients)+1)
+        return c
 
     def __eq__(self, other):
         return isinstance(other, PowerBasis) and self.center == other.center

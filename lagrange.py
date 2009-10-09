@@ -1,8 +1,9 @@
 import numpy as np
+import numpy.linalg
 
 from poly import Polynomial, Basis
 
-def bit_reverse(n):
+def bit_reverse(n, denom):
     """Return the fraction whose binary expansion is the reverse of n
 
     If n's binary expansion is b_r b_(r-1) ... b_0, return m and d
@@ -11,9 +12,8 @@ def bit_reverse(n):
     any the sequence bit_reverse(1), bit_reverse(2), ..., bit_reverse(k)
     samples the interval (0,1) more uniformly than random numbers would.
     """
-    denom = 1
-    while denom<=n:
-        denom *= 2
+    if n>denom:
+        raise ValueError("n must be less than denom")
     mask = denom//2
     v = 1
     r = 0
@@ -21,12 +21,22 @@ def bit_reverse(n):
         r += (n & mask) and v
         mask //= 2
         v *= 2
-    return r, denom
+    return r
 
 def chebyshev_points_sequence(n):
-    """The extrema of the Chebyshev polynomials, in a subrandom order."""
+    """The extrema of the Chebyshev polynomials, in a subrandom order.
+
+    The order visits all the extrema of a polynomial of one degree in
+    bit-reversed order, then approximately doubles the degree.
+    """
     # FIXME: Make sure we're using the right points.
-    m, denom = bit_reverse(n)
+    s = 0
+    denom = 1
+    while s+denom<=n:
+        s+=denom
+        denom*=2
+    
+    m = bit_reverse(n-s, denom)
     return np.cos(np.pi*(2*m+1)/float(2*denom))
 
 class LagrangeBasis(Basis):
@@ -84,7 +94,7 @@ class LagrangeBasis(Basis):
         new_points = []
         while n>len(self.points)+len(new_points):
             x = chebyshev_points_sequence(self.first_chebyshev_point_not_tried)
-            x = 2*x/(b-a) + (a+b)/2.
+            x = x*(b-a)/2. + (a+b)/2.
             if x not in self.initial_points_set:
                 new_points.append(x)
             self.first_chebyshev_point_not_tried += 1
@@ -180,6 +190,20 @@ class LagrangeBasis(Basis):
 
         c = np.dot(self.derivative_matrix(len(coefficients)),coefficients)
         return c[:-1]
+
+    def antiderivative(self, coefficients):
+        if len(coefficients)==0:
+            return np.zeros(1)
+
+        thresh = 1e-13
+
+        coefficients = self.extend(coefficients,len(coefficients)+1)
+        D = self.derivative_matrix(len(coefficients))
+        U, s, Vh = numpy.linalg.svd(D)
+        ss = 1./s
+        ss[s<thresh*s[0]] = 0
+        c = reduce(np.dot,(Vh.T,np.diag(ss),U.T,coefficients))
+        return c
 
     def convert(self, polynomial):
         n = len(polynomial.coefficients)
