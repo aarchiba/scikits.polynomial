@@ -153,7 +153,7 @@ class GradedBasis(Basis):
         Basis.__init__(self)
 
     def extend(self, coefficients, n):
-                if n<len(coefficients):
+        if n<len(coefficients):
             raise ValueError("extend can only make coefficient arrays longer")
         z = np.zeros(n)
         z[:len(coefficients)] = coefficients

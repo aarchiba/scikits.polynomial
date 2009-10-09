@@ -3,6 +3,7 @@ import numpy as np
 from poly import Polynomial
 from power import PowerBasis
 from lagrange import LagrangeBasis
+from cheb import ChebyshevBasis
 
 
 def test_eval():
@@ -84,6 +85,8 @@ def test_convert():
         yield check_convert, LagrangeBasis(), PowerBasis(), l
         yield check_convert, PowerBasis(0.2), PowerBasis(5), l
         yield check_convert, LagrangeBasis(), LagrangeBasis([-1,0.3,1]), l
+        yield check_convert, LagrangeBasis(), ChebyshevBasis(), l
+        yield check_convert, ChebyshevBasis(), ChebyshevBasis((0,1)), l
 
 def check_convert(b1, b2, l):
     p1 = Polynomial(b1,l)
