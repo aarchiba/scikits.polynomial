@@ -1,6 +1,8 @@
 import numpy as np
 
-from poly import PowerBasis, LagrangeBasis, Polynomial
+from poly import Polynomial
+from power import PowerBasis
+from lagrange import LagrangeBasis
 
 
 def test_eval():
