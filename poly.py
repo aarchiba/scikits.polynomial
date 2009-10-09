@@ -123,15 +123,6 @@ class Basis:
         """Compute the coefficients of the derivative."""
         raise NotImplementedError
 
-    def basis_polynomial(self, n):
-        """The nth basis polynomial."""
-        # FIXME: vectorize over n?
-        c = np.zeros(n+1)
-        c[-1] = 1
-        return Polynomial(self, c)
-    def __getitem__(self, n):
-        return self.basis_polynomial(n)
-
     def __eq__(self, other):
         """Test for equality."""
         raise NotImplementedError
@@ -169,6 +160,15 @@ class GradedBasis(Basis):
         z[:len(coefficients)] = coefficients
         return z
 
+    def basis_polynomial(self, n):
+        """The nth basis polynomial."""
+        # FIXME: vectorize over n?
+        c = np.zeros(n+1)
+        c[-1] = 1
+        return Polynomial(self, c)
+    def __getitem__(self, n):
+        return self.basis_polynomial(n)
+
 
 
 def polyfit(x, y, deg, basis=None):
@@ -186,10 +186,11 @@ def polyfit(x, y, deg, basis=None):
     y = np.asarray(y)
     A = np.zeros((len(y),deg+1))
     for i in range(deg+1):
-        A[:,i] = basis[i](x)
+        pc = np.zeros(deg+1)
+        pc[i] = 1
+        A[:,i] = Polynomial(basis,pc)(x)
 
     c, resids, rank, s = numpy.linalg.lstsq(A, y)
     p = 0
-    for (i,ci) in enumerate(c):
-        p += ci*basis[i]
-    return p
+    return Polynomial(basis,c)
+

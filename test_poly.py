@@ -121,10 +121,6 @@ def check_divmod(p1, p2):
         assert p1//p2 == q
         assert p1%p2 == r
 
-def test_add_lagrange_different_lengths():
-    b = LagrangeBasis([1,0,-1])
-    b[0]+b[1]
-
 def test_polyfit_exact():
     x = [-1,0,1]
     y = [5,6,7]
