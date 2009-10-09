@@ -105,7 +105,7 @@ class LagrangeBasis(Basis):
         new_coefficients = np.zeros(n)
         new_coefficients[:len(coefficients)] = coefficients
         if n>len(coefficients):
-            new_coefficients[len(coefficients):] = self.evaluate(coefficients, self.points[len(coefficients):])
+            new_coefficients[len(coefficients):] = self.evaluate(coefficients, self.points[len(coefficients):len(new_coefficients)])
         return new_coefficients
 
     def weights(self, n=None):

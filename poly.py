@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.linalg
 
 class Polynomial:
     """Class for representing polynomials.
@@ -122,6 +123,15 @@ class Basis:
         """Compute the coefficients of the derivative."""
         raise NotImplementedError
 
+    def basis_polynomial(self, n):
+        """The nth basis polynomial."""
+        # FIXME: vectorize over n?
+        c = np.zeros(n+1)
+        c[-1] = 1
+        return Polynomial(self, c)
+    def __getitem__(self, n):
+        return self.basis_polynomial(n)
+
     def __eq__(self, other):
         """Test for equality."""
         raise NotImplementedError
@@ -160,3 +170,26 @@ class GradedBasis(Basis):
         return z
 
 
+
+def polyfit(x, y, deg, basis=None):
+    """Least-squares polynomial fit.
+
+    This returns the polynomial p of degree at most deg that
+    minimizes sum((p(x)-y)**2). This polynomial is represented in
+    the given basis.
+    """
+    if basis is None:
+        import lagrange
+        basis = lagrange.LagrangeBasis(x)
+
+    x = np.asarray(x)
+    y = np.asarray(y)
+    A = np.zeros((len(y),deg+1))
+    for i in range(deg+1):
+        A[:,i] = basis[i](x)
+
+    c, resids, rank, s = numpy.linalg.lstsq(A, y)
+    p = 0
+    for (i,ci) in enumerate(c):
+        p += ci*basis[i]
+    return p

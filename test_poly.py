@@ -1,6 +1,6 @@
 import numpy as np
 
-from poly import Polynomial
+from poly import Polynomial, polyfit
 from power import PowerBasis
 from lagrange import LagrangeBasis
 from cheb import ChebyshevBasis
@@ -120,3 +120,13 @@ def check_divmod(p1, p2):
         assert np.abs(p1(x)-(p2(x)*q(x)+r(x)))<1e-8
         assert p1//p2 == q
         assert p1%p2 == r
+
+def test_add_lagrange_different_lengths():
+    b = LagrangeBasis([1,0,-1])
+    b[0]+b[1]
+
+def test_polyfit_exact():
+    x = [-1,0,1]
+    y = [5,6,7]
+    p = polyfit(x,y,1)
+    assert np.abs(p(0.5)-6.5)<1e-8
