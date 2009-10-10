@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import fftpack
 
 from poly import Polynomial, Basis, GradedBasis
 import chebyshev
@@ -42,10 +43,8 @@ class ChebyshevBasis(GradedBasis):
         xk = np.cos(np.pi*(np.arange(n)+0.5)/n)
         fxk = polynomial(((b-a)/2.) * xk + (b+a)/2.)
 
-        c = np.zeros(n)
-        for j in range(n):
-            # FIXME: use DCT to evaluate this
-            c[j] = np.sum(fxk*np.cos(np.pi*j*(np.arange(n)+0.5)/n))
+        c = fftpack.dct(fxk, type=2)
+        c /= 2.
+        c[0] /= 2.
 
-        c[0]/=2.
         return Polynomial(self,(2./n)*c)
