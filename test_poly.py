@@ -3,7 +3,7 @@ import numpy as np
 from poly import Polynomial, polyfit
 from power import PowerBasis
 from lagrange import LagrangeBasis
-from cheb import ChebyshevBasis
+from cheb import ChebyshevBasis, _dct
 
 
 def test_eval():
@@ -152,3 +152,12 @@ def check_antiderivative(p):
     assert len(p.coefficients)==len(q.coefficients)
     for x in np.linspace(-1,1,len(p.coefficients)+1):
         assert np.abs(p(x)-q(x))<1e-8
+
+def test_dct():
+    x = np.array([1, 2.5, 3, -3.3, 5])
+    n = len(x)
+    y = _dct(x)
+    y2 = np.zeros(n)
+    for j in range(n):
+        y2[j] = 2*np.sum(x*np.cos(np.pi*j*(np.arange(n)+0.5)/n))
+    assert np.allclose(y, y2)
