@@ -142,25 +142,29 @@ class LagrangeBasis(Basis):
         the case that the points are Chebyshev points.
         """
         self.extend_points(len(coefficients))
+        if len(coefficients)!=0:
+            w = self.weights(len(coefficients))
+
+        def evaluate_scalar(x):
+            if len(coefficients)==0:
+                return 0.
+            # special case for when x is one of the given points
+            c = x==self.points[:len(coefficients)]
+            if np.any(c):
+                i = np.where(c)[0][0]
+                return coefficients[i]
+
+            wx = w/(x-self.points[:len(coefficients)])
+            return np.sum(wx*coefficients)/np.sum(wx)
+
         if not np.isscalar(x):
             x = np.asarray(x)
             r = np.zeros(x.shape)
             for (ix, v) in np.ndenumerate(x):
-                r[ix] = self.evaluate(coefficients, v)
+                r[ix] = evaluate_scalar(v)
             return r
-
-
-        # special case for when x is one of the given points
-        if len(coefficients)==0:
-            return 0.
-        c = x==self.points[:len(coefficients)]
-        if np.any(c):
-            i = np.where(c)[0][0]
-            return coefficients[i]
-
-        w = self.weights(len(coefficients))
-        wx = w/(x-self.points[:len(coefficients)])
-        return np.sum(wx*coefficients)/np.sum(wx)
+        else:
+            return evaluate_scalar(x)
 
     def multiply(self, coefficients, other_coefficients):
         """Multiply two polynomials.
