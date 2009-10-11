@@ -25,7 +25,7 @@ class PowerBasis(GradedBasis):
             return np.zeros(0)
         c = np.zeros(len(coefficients)+len(other_coefficients)-1)
         for i, ci in enumerate(coefficients):
-            c[i:i+len(coefficients)] += ci*other_coefficients
+            c[i:i+len(other_coefficients)] += ci*other_coefficients
         return c
 
     def derivative(self, coefficients):

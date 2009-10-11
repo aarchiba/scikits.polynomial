@@ -81,12 +81,29 @@ class Polynomial:
     def __mod__(self, other):
         q, r = divmod(self, other)
         return r
+
+    def __div__(self, other):
+        return self.__truediv__(other)
     def __truediv__(self, other):
         if isinstance(other, Polynomial):
             raise ValueError("Cannot do true division by polynomials")
         return (1./other)*self
     def __rtruediv__(self,other):
         raise ValueError("Cannot do true division by polynomials")
+
+def equal_by_values(p1, p2, interval=(-1,1), tol=1e-8):
+    """Compare two polynomials by evaluating them at many points.
+
+    Given two polynomials whose degrees are known to be less than n, 
+    if they agree at n distinct points, then they are equal. This
+    function tests polynomials for equality in this way. The points
+    are selected to be in interval, and the values are considered
+    equal if they differ by less than tol.
+    """
+    a, b = interval
+    n = np.max(len(p1.coefficients), len(p2.coefficients))
+    xs = np.linspace(a,b,n)
+    return np.all(np.abs(p1(xs)-p2(xs))<tol)
 
 class Basis:
     """Abstract base class for polynomial bases.
