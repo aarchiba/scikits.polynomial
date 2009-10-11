@@ -17,7 +17,8 @@ class ChebyshevBasis(GradedBasis):
     def one(self):
         return Polynomial(self, [1])
     def X(self):
-        return Polynomial(self, [0,1])
+        a, b = self.interval
+        return Polynomial(self, [(b+a)/2.,(b-a)/2.])
 
     def evaluate(self, coefficients, x):
         if len(coefficients)==0:

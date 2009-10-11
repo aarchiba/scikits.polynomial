@@ -233,6 +233,11 @@ def test_chebtrim() :
     assert_equal(ch.chebtrim(coef, 1), coef[:-3])
     assert_equal(ch.chebtrim(coef, 2), [0])
 
+def test_chebval_domain():
+    p = [1,2,3,4]
+    xs = np.linspace(-1,1,10)
+    assert_array_almost_equal(ch.chebval(xs,p),ch.chebval(2*xs,p,domain=(-2,2)))
+    assert_array_almost_equal(ch.chebval(xs,p),ch.chebval(xs/2.+0.5,p,domain=(0,1)))
 
 if __name__ == "__main__" :
     test__trim()
