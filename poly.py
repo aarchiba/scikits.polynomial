@@ -232,6 +232,12 @@ class Basis:
         """
         raise NotImplementedError
 
+    def from_roots(self, roots):
+        X = self.X()
+        r = self.one()
+        for rt in roots:
+            r *= X-rt
+        return r
 
 class GradedBasis(Basis):
     """A polynomial basis in which the nth element has degree n."""

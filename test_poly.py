@@ -67,13 +67,19 @@ def check_product_rule(p1, p2):
     assert equal_by_values((p1*p2).derivative(),
             p1*p2.derivative()+p1.derivative()*p2)
 
+def check_from_roots(b,r):
+    p = b.from_roots(r)
+    assert_almost_equal(PowerBasis().convert(p).coefficients[-1],1)
+    if len(r)!=0:
+        xs = np.linspace(np.amin(r)-1,np.amax(r)+1,101)
+        scale = np.sqrt(np.mean(p(xs)**2))
+        assert_array_almost_equal(p(r)/scale,0)
 
 def check_perfidious(b):
     # raise SkipTest
     X = b.X()
-    perfidious = reduce(lambda x, y: x*y, [X-(i+1) for i in range(20)])
+    perfidious = b.from_roots(np.arange(20)+1)
     scale = np.sqrt(np.mean(perfidious(np.linspace(1,20,1001))**2))
-    print scale
     for i in range(20):
         assert np.amax(np.abs(perfidious(np.arange(20)+1)))<1e-8*scale
 
@@ -84,6 +90,16 @@ def check_X(b):
     assert_array_almost_equal(b.X()(xs), xs)
 
 # specific tests that don't really belong here
+
+def test_from_roots():
+    b = PowerBasis()
+    for rt in [[0,1],[1],[],[0,0,1,1]]:
+        yield check_from_roots, b, rt
+
+def test_from_roots_lagrange():
+    b = PowerBasis()
+    for rt in [[0,1],[1],[],[0,0,1,1]]:
+        yield check_from_roots, b, rt
 
 def test_perfidious_lagrange():
     check_perfidious(LagrangeBasis(interval=(0,20)))
