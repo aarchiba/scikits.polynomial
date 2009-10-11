@@ -2,25 +2,14 @@ import numpy as np
 import numpy.linalg
 
 # FIXME: is this the right design?
-# A possible improvement: instead of constructing polynomials as
-# p = Polynomial(basis, coefficients)
-# maybe use
-# p = basis.polynomial(coefficients)
-# This would allow Polynomial to be usefully subclassed, for when
-# bases allow more operations or different implementations. But it 
-# looks a bit unnatural, and doesn't allow a default value for the basis
-# argument (not that that's necessarily a good idea). There's also the 
-# question of how to prevent people from calling the constructor directly
-# and getting plain Polynomials even for bases that expect subclasses.
-# One solution to this problem is to use __new__.
-# 
-# Of course, if we're allowing different implementations, then maybe
-# the code for (e.g.) evaluation should be moved from the basis to the
-# polynomial objects.
+# Bases can produce Polynomial subclasses by overriding the .polynomial
+# method. Unfortunately this only works if all users construct polynomials
+# using either the "polynomial" factory function or the "basis.polynomial" 
+# form. Using the "Polynomial" constructor will silently produce base
+# class instances instead.
 #
-# I like the current design because it nicely separates all the 
-# operator overloading and type checking from the numerical algorithms.
-#
+def polynomial(basis, coefficients):
+    return basis.polynomial(coefficients)
 
 class Polynomial:
     """Class for representing polynomials.
@@ -140,6 +129,15 @@ class Basis:
     def __init__(self):
         pass
 
+    def polynomial(self, coefficients):
+        """Create a polynomial with the given coefficients.
+
+        This method should be overridden in bases that want to
+        create objects of a subclass of Polynomial, for example
+        to implement additional methods or other arguments.
+        """
+        return Polynomial(self, coefficients)
+
     def extend(self, coefficients, n):
         """Extend a coefficient list to length n.
 
@@ -218,7 +216,7 @@ class GradedBasis(Basis):
         # FIXME: vectorize over n?
         c = np.zeros(n+1)
         c[-1] = 1
-        return Polynomial(self, c)
+        return polynomial(self, c)
     def __getitem__(self, n):
         return self.basis_polynomial(n)
 
@@ -241,9 +239,9 @@ def polyfit(x, y, deg, basis=None):
     for i in range(deg+1):
         pc = np.zeros(deg+1)
         pc[i] = 1
-        A[:,i] = Polynomial(basis,pc)(x)
+        A[:,i] = polynomial(basis,pc)(x)
 
     c, resids, rank, s = numpy.linalg.lstsq(A, y)
     p = 0
-    return Polynomial(basis,c)
+    return polynomial(basis,c)
 
