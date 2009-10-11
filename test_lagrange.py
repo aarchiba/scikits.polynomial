@@ -97,4 +97,11 @@ def test_power():
         assert equal_by_values(p**i, reduce(lambda x, y: x*y, [p]*i, Polynomial(LagrangeBasis(), [1])))
 
 
-
+def test_perfidious():
+    b = LagrangeBasis([0,20])
+    b.extend_points(2)
+    X = Polynomial(b,[b.points[0],b.points[1]])
+    perfidious = reduce(lambda x, y: x*y, [X-i for i in range(20)])
+    scale = np.sqrt(np.mean(perfidious(np.linspace(0,20,201))**2))
+    for i in range(20):
+        assert_almost_equal(perfidious(i)/scale,0)
