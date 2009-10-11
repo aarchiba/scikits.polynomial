@@ -1,77 +1,64 @@
 import numpy as np
 
-from poly import Polynomial, polyfit
+from poly import Polynomial, polyfit, equal_by_values
 from power import PowerBasis
 from lagrange import LagrangeBasis
 from cheb import ChebyshevBasis, _dct
 
 
-def test_eval():
-    yield check_eval, PowerBasis(), [], 5, 0
-    yield check_eval, PowerBasis(), [3], 5, 3
-    yield check_eval, PowerBasis(), [3,2], 5, 13
-    yield check_eval, PowerBasis(), [3,2,-1], 5, -12
 
-def check_eval(basis,l,x,r):
-    assert np.abs(Polynomial(basis,l)(x)-r)<1e-13
 
-def test_add():
-    yield check_add, PowerBasis(), [1,3], [2,-4,-2], -4
-    yield check_add, PowerBasis(), [], [2,-4,-2], -4
-    yield check_add, PowerBasis(), [2], [2], -4
-    yield check_add, PowerBasis(), [2,1], [-2,-1], -4
+def test_equal_by_values():
+    p1 = Polynomial(PowerBasis(),[1,2,3,4])
+    p2 = Polynomial(PowerBasis(),[1,2,3])
+    assert equal_by_values(p1, p1)
+    assert not equal_by_values(p1, p2)
 
-def check_add(basis, l1, l2, x):
-    p1, p2 = Polynomial(basis,l1), Polynomial(basis,l2)
-    assert np.abs(p1(x)+p2(x)-(p1+p2)(x))<1e-13
-    assert np.abs(p1(x)+p2(x)-(p2+p1)(x))<1e-13
 
-def test_mul():
-    yield check_add, PowerBasis(), [1,3], [2,-4,-2], -4
-    yield check_add, PowerBasis(), [], [2,-4,-2], -4
-    yield check_add, PowerBasis(), [2], [2], -4
-    yield check_add, PowerBasis(), [2,1], [-2,-1], -4
 
-def check_mul(basis, l1, l2, x):
-    p1, p2 = Polynomial(basis,l1), Polynomial(basis,l2)
-    assert np.abs(p1(x)*p2(x)-(p1*p2)(x))<1e-13
-    assert np.abs(p1(x)*p2(x)-(p2*p1)(x))<1e-13
+# support tests used for all kinds of polynomials
 
-def test_scalar_mul():
-    yield check_scalar_mul, PowerBasis(), [2,1], 4, -4
-    yield check_scalar_mul, PowerBasis(), [], 4, -4
-    yield check_scalar_mul, PowerBasis(), [2,0,1], 4, -4
-    yield check_scalar_mul, PowerBasis(), [2,1,0], 4, -4
+def check_operation(op, p1, p2):
+    for x in [-1,0,0.3,1]:
+        assert_almost_equal(op(p1(x),p2(x)),op(p1,p2)(x))
 
-def check_scalar_mul(basis, l, c, x):
-    p = Polynomial(basis,l)
-    assert np.abs(c*p(x)-(c*p)(x))<1e-13
-    assert np.abs(c*p(x)-(p*c)(x))<1e-13
+def check_coefficient_addition(b, l1, l2):
+    p1 = Polynomial(b,l1)
+    p2 = Polynomial(b,l2)
+    n = max(len(l1),len(l2))
+    c = np.zeros(n)
+    c[:len(l1)] += l1
+    c[:len(l2)] += l2
+    p = Polynomial(b,c)
+    assert equal_by_values(p1+p2, p)
+
+
+
+def check_scalar_operation(op, c, p):
+    for x in [-1,0,0.3,1]:
+        assert_almost_equal(op(c,p(x)),op(c,p)(x))
+
+
+def check_divmod(p1, p2):
+    q,r = divmod(p1,p2)
+    for x in np.arange(8):
+        assert len(r.coefficients)<len(p2.coefficients)
+        assert np.abs(p1(x)-(p2(x)*q(x)+r(x)))<1e-8
+        assert p1//p2 == q
+        assert p1%p2 == r
+
+def check_product_rule(p1, p2):
+    assert equal_by_values((p1*p2).derivative(),
+            p1*p2.derivative()+p1.derivative()*p2)
+
+
+
+# specific tests that don't really belong here
 
 def test_deriv_lagrange():
     p = Polynomial(LagrangeBasis([-1,0,1]), [1,0,-1])
     assert np.abs(p.derivative()(1)-(-1))<1e-10
     assert np.abs(p.derivative()(5)-(-1))<1e-10
-
-def test_sub():
-    yield check_sub, PowerBasis(), [1,3], [2,-4,-2], -4
-    yield check_sub, PowerBasis(), [], [2,-4,-2], -4
-    yield check_sub, PowerBasis(), [2], [2], -4
-    yield check_sub, PowerBasis(), [2,1], [-2,-1], -4
-
-def check_sub(basis, l1, l2, x):
-    p1, p2 = Polynomial(basis,l1), Polynomial(basis,l2)
-    assert np.abs(p1(x)-p2(x)-(p1-p2)(x))<1e-13
-
-def test_lagrange_basics():
-    b = LagrangeBasis([-1,1])
-    p1 = [0,1]
-    p2 = [1,-1]
-
-    yield check_eval, b, p2, 0, 0
-    yield check_add, b, p1, p2, 0.3
-    yield check_mul, b, p1, p2, 0.3
-
 
 def test_convert():
     for l in [[], [8], [3,1], [1,0,0,0,1]]:
