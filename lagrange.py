@@ -109,7 +109,10 @@ class LagrangeBasis(Basis):
 
         This function does two things: select new sample points if necessary,
         and evaluate the polynomial specified by coefficients at more points.
+        Shortening the array is simply truncation.
         """
+        if n<len(coefficients):
+            return coefficients[:n].copy()
         self.extend_points(n)
         
         new_coefficients = np.zeros(n)
@@ -179,6 +182,13 @@ class LagrangeBasis(Basis):
         other_coefficients = self.extend(other_coefficients, l)
         return coefficients*other_coefficients
     
+    def power(self, coefficients, power):
+        if len(coefficients)==0:
+            return np.zeros(0)
+        l = power*(len(coefficients)-1)+1
+        coefficients = self.extend(coefficients, l)
+        return coefficients**power
+
     def derivative_matrix(self, n):
         self.extend_points(n)
         w = self.weights(n)

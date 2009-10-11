@@ -91,5 +91,10 @@ def test_deriv_product():
         yield check_derivative_linearity, p1, p2
         yield check_product_rule, p1, p2
 
+def test_power():
+    p = Polynomial(LagrangeBasis(),[0,1])
+    for i in range(16):
+        assert equal_by_values(p**i, reduce(lambda x, y: x*y, [p]*i, Polynomial(LagrangeBasis(), [1])))
+
 
 
