@@ -1,5 +1,8 @@
 import numpy as np
-from numpy.testing import assert_almost_equal
+from numpy.testing import assert_almost_equal, assert_array_almost_equal
+
+from nose import SkipTest 
+from nose.tools import raises
 
 from poly import Polynomial, polyfit, equal_by_values
 from power import PowerBasis
@@ -65,7 +68,37 @@ def check_product_rule(p1, p2):
             p1*p2.derivative()+p1.derivative()*p2)
 
 
+def check_perfidious(b):
+    # raise SkipTest
+    X = b.X()
+    perfidious = reduce(lambda x, y: x*y, [X-(i+1) for i in range(20)])
+    scale = np.sqrt(np.mean(perfidious(np.linspace(1,20,1001))**2))
+    print scale
+    for i in range(20):
+        assert np.amax(np.abs(perfidious(np.arange(20)+1)))<1e-8*scale
+
+def check_one(b):
+    assert_array_almost_equal(b.one()(np.linspace(-1,1,10)), 1)
+def check_X(b):
+    xs = np.linspace(-1,1,10)
+    assert_array_almost_equal(b.X()(xs), xs)
+
 # specific tests that don't really belong here
+
+def test_perfidious_lagrange():
+    check_perfidious(LagrangeBasis(interval=(0,20)))
+
+def test_perfidious_lagrange_cheat():
+    check_perfidious(LagrangeBasis(np.arange(20)+1))
+
+@raises(AssertionError)
+def test_perfidious_power():
+    check_perfidious(PowerBasis())
+
+@raises(AssertionError)
+def test_perfidious_chebyshev():
+    # FIXME: Why does this fail?
+    check_perfidious(ChebyshevBasis((0,20)))
 
 def test_deriv_lagrange():
     p = Polynomial(LagrangeBasis([-1,0,1]), [1,0,-1])
@@ -139,3 +172,8 @@ def test_dct():
     for j in range(n):
         y2[j] = 2*np.sum(x*np.cos(np.pi*j*(np.arange(n)+0.5)/n))
     assert np.allclose(y, y2)
+
+def test_cheb_one():
+    check_one(ChebyshevBasis())
+def test_cheb_X():
+    check_X(ChebyshevBasis())

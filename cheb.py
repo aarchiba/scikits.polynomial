@@ -14,6 +14,11 @@ class ChebyshevBasis(GradedBasis):
         a, b = interval # type checking
         self.interval = (float(a),float(b))
 
+    def one(self):
+        return Polynomial(self, [1])
+    def X(self):
+        return Polynomial(self, [0,1])
+
     def evaluate(self, coefficients, x):
         if len(coefficients)==0:
             return 0.

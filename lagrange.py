@@ -29,7 +29,7 @@ def chebyshev_points_sequence(n):
     The order visits all the extrema of a polynomial of one degree in
     bit-reversed order, then approximately doubles the degree.
     """
-    # FIXME: Make sure we're using the right points.
+    # FXME: Make sure we're using the right points.
     s = 0
     denom = 1
     while s+denom<=n:
@@ -66,6 +66,10 @@ class LagrangeBasis(Basis):
         it will use the range spanned by initial_points, if these are 
         available, or (-1,1) if they are not.
         """
+        # FIXME: do something about repeated points
+        # At least raise an exception
+        # In principle one could use them to allow Hermite interpolation
+        # (i.e. the second occurrence signals a derivative value)
         Basis.__init__(self)
         self.initial_points = tuple(initial_points)
         self.points = np.array(initial_points, dtype=np.float)
@@ -80,6 +84,12 @@ class LagrangeBasis(Basis):
             self.interval = interval
         self.initial_points_set = set(initial_points)
         self.first_chebyshev_point_not_tried = 0
+
+    def one(self):
+        return Polynomial(self, [1])
+    def X(self):
+        self.extend_points(2)
+        return Polynomial(self, [self.points[0],self.points[1]])
 
     def __eq__(self, other):
         return isinstance(other, LagrangeBasis) and self.initial_points == other.initial_points
@@ -229,3 +239,14 @@ class LagrangeBasis(Basis):
     def __repr__(self):
         return "<LagrangeBasis initial_points=%s>" % (self.initial_points,)
 
+
+def lagrange_from_roots(roots, interval=None):
+    # FIXME: this could be much more efficient, constructing the
+    # result more-or-less directly.
+    ur = np.unique(roots)
+    b = LagrangeBasis(np.unique(roots),interval=interval)
+    X = b.X()
+    r = b.one()
+    for rt in roots:
+        r *= X-rt
+    return r

@@ -144,6 +144,14 @@ class Basis:
     def __init__(self):
         pass
 
+    def one(self):
+        """Return the polynomial 1."""
+        raise NotImplementedError
+    
+    def X(self):
+        """Return the polynomial X."""
+        raise NotImplementedError
+
     def extend(self, coefficients, n):
         """Extend a coefficient list to length n.
 

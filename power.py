@@ -9,6 +9,11 @@ class PowerBasis(GradedBasis):
         Basis.__init__(self)
         self.center = center
 
+    def one(self):
+        return Polynomial(self, [1])
+    def X(self):
+        return Polynomial(self, [0,1])
+
     def evaluate(self, coefficients, x):
         x = np.asarray(x,dtype=float) - self.center
         r = np.zeros(x.shape)
