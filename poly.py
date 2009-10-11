@@ -2,27 +2,14 @@ import numpy as np
 import numpy.linalg
 
 # FIXME: is this the right design?
-# A possible improvement: instead of constructing polynomials as
-# p = Polynomial(basis, coefficients)
-# maybe use
-# p = basis.polynomial(coefficients)
-# This would allow Polynomial to be usefully subclassed, for when
-# bases allow more operations or different implementations. But it 
-# looks a bit unnatural, and doesn't allow a default value for the basis
-# argument (not that that's necessarily a good idea). There's also the 
-# question of how to prevent people from calling the constructor directly
-# and getting plain Polynomials even for bases that expect subclasses.
-# One solution to this problem is to use __new__.
-# 
-# Of course, if we're allowing different implementations, then maybe
-# the code for (e.g.) evaluation should be moved from the basis to the
-# polynomial objects.
-#
-# I like the current design because it nicely separates all the 
-# operator overloading and type checking from the numerical algorithms.
-#
-
-class Polynomial:
+# This uses a somewhat devious approach involving __new__ to let
+# the basis change the type of the resulting object. This way
+# bases can produce subclasses of Polynomial, for example to support
+# additional methods.
+# It would probably be simpler to use a factory function or a method
+# of Basis, but then how do you keep people from constructing Polynomials
+# directly?
+class Polynomial(object):
     """Class for representing polynomials.
 
     This class represents a polynomial as a linear combination of
@@ -36,11 +23,9 @@ class Polynomial:
     is often a numerically unstable operation.
     """
 
-    def __init__(self, basis, coefficients):
-        self.basis = basis
-        self.coefficients = np.array(coefficients, dtype=np.float)
-        if len(self.coefficients.shape)!=1:
-            raise ValueError("Polynomial coefficients must be one-dimensional arrays; given coefficients of shape %s" % (self.coefficients.shape,))
+    def __new__(cls, basis, coefficients):
+        obj = object.__new__(cls)
+        return basis._create(obj, coefficients)
 
     def __eq__(self,other):
         return (isinstance(other, Polynomial) 
@@ -139,6 +124,14 @@ class Basis:
 
     def __init__(self):
         pass
+
+    def _create(self, obj, coefficients):
+        obj.basis = self
+        obj.coefficients = np.array(coefficients, dtype=np.float)
+        if len(obj.coefficients.shape)!=1:
+            raise ValueError("Polynomial coefficients must be one-dimensional arrays; given coefficients of shape %s" % (self.coefficients.shape,))
+        return obj
+
 
     def extend(self, coefficients, n):
         """Extend a coefficient list to length n.
