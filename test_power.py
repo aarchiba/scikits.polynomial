@@ -4,24 +4,24 @@ from numpy.testing import assert_almost_equal
 from poly import Polynomial, equal_by_values
 from power import PowerBasis
 
-from test_poly import check_operation, \
+from test_poly import check_example, \
+        check_operation, \
         check_operation, \
         check_coefficient_addition, \
         check_scalar_operation, \
         check_divmod, \
-        check_product_rule
+        check_product_rule, \
+        check_derivative_linearity
+
 
 
 def test_examples():
-    for (p, x, y) in [([3],0,3),
+    for (l, x, y) in [([3],0,3),
                       ([], 1, 0),
                       ([1,0,-1], -1, 0),
                       ([0,0,0,1], 3, 27)]:
+        p = Polynomial(PowerBasis(),l)
         yield check_example, p, x, y
-
-def check_example(p,x,y):
-    p = Polynomial(PowerBasis(),p)
-    assert_almost_equal(p(x),y)
 
 def test_center():
     p1 = Polynomial(PowerBasis(-1),[0,0,0,1])
@@ -103,8 +103,5 @@ def test_deriv_product():
         p1 = Polynomial(b,l1)
         p2 = Polynomial(b,l2)
         yield check_product_rule, p1, p2
-
-def check_product_rule(p1, p2):
-    assert equal_by_values((p1*p2).derivative(),
-            p1*p2.derivative()+p1.derivative()*p2)
+        yield check_derivative_linearity, p1, p2
 

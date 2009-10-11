@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.testing import assert_almost_equal
 
 from poly import Polynomial, polyfit, equal_by_values
 from power import PowerBasis
@@ -17,6 +18,9 @@ def test_equal_by_values():
 
 
 # support tests used for all kinds of polynomials
+
+def check_example(p,x,y):
+    assert_almost_equal(p(x),y)
 
 def check_operation(op, p1, p2):
     for x in [-1,0,0.3,1]:
@@ -47,10 +51,14 @@ def check_divmod(p1, p2):
         assert p1//p2 == q
         assert p1%p2 == r
 
+def check_derivative_linearity(p1, p2):
+    f = 7.3
+    assert equal_by_values((f*p1).derivative(),f*p1.derivative())
+    assert equal_by_values((p1+p2).derivative(),p1.derivative()+p2.derivative())
+
 def check_product_rule(p1, p2):
     assert equal_by_values((p1*p2).derivative(),
             p1*p2.derivative()+p1.derivative()*p2)
-
 
 
 # specific tests that don't really belong here
