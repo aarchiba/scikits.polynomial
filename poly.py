@@ -55,8 +55,13 @@ class Polynomial:
     def __rmul__(self, other):
         return self*other
 
+    def __neg__(self):
+        return Polynomial(self.basis, -self.coefficients)
+
     def __sub__(self, other):
-        return self + (-1.)*other
+        return self + (-other)
+    def __rsub__(self, other):
+        return other + (-self)
 
     def derivative(self):
         return Polynomial(self.basis,self.basis.derivative(self.coefficients))

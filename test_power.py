@@ -64,9 +64,14 @@ def test_scalar_operations():
                    (10, [1,2,3]),
                    (0.1, [1,2,3]),
                    (3, [2]),
+                   (0, [2,5]),
                    (3, [])]:
         yield check_scalar_operation, (lambda c, p: c*p), c, l
         yield check_scalar_operation, (lambda c, p: p*c), c, l
+        yield check_scalar_operation, (lambda c, p: p+c), c, l
+        yield check_scalar_operation, (lambda c, p: c+p), c, l
+        yield check_scalar_operation, (lambda c, p: p-c), c, l
+        yield check_scalar_operation, (lambda c, p: c-p), c, l
         if c!=0:
             yield check_scalar_operation, (lambda c, p: p/c), c, l
 
