@@ -77,3 +77,47 @@ def check_scalar_operation(op, c, l):
         assert_almost_equal(op(c,p(x)),op(c,p)(x))
 
 # FIXME: test for division by scalar zero
+
+def test_divmod():
+
+    for (l1,l2) in [([1,0,0,1],[1,1]),
+                    ([-1,-4,0,0],[1,4]),
+                    ([1,1],[1,0,0,1]),
+                    ([1,0,0,1],[1,0,0,1]),
+                    ([1,0,0,1],[1])]:
+        yield check_divmod, Polynomial(PowerBasis(),l1), Polynomial(PowerBasis(),l1)
+        
+def check_divmod(p1, p2):
+    q,r = divmod(p1,p2)
+    for x in np.arange(8):
+        assert len(r.coefficients)<len(p2.coefficients)
+        assert np.abs(p1(x)-(p2(x)*q(x)+r(x)))<1e-8
+        assert p1//p2 == q
+        assert p1%p2 == r
+
+def test_deriv_sample():
+    p = Polynomial(PowerBasis(), [1,0,-1])
+    assert_almost_equal(p.derivative()(1),(-2))
+    assert_almost_equal(p.derivative()(5),(-10))
+
+def test_deriv_product():
+    """Test that the product rule holds.
+
+    If an operator is linear and respects the product
+    rule, then it is the derivative operator (on polynomials,
+    at least).
+    """
+    for (l1,l2) in [([1,2,3],[4,5,6]),
+                    ([1,2,3],[1]),
+                    ([1],[1]),
+                    ([],[1,2,3]),
+                    ([],[])]:
+        yield check_product_rule, l1, l2
+
+def check_product_rule(l1, l2):
+    b = PowerBasis()
+    p1 = Polynomial(b,l1)
+    p2 = Polynomial(b,l2)
+    assert equal_by_values((p1*p2).derivative(),
+            p1*p2.derivative()+p1.derivative()*p2)
+

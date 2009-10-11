@@ -48,11 +48,6 @@ def check_scalar_mul(basis, l, c, x):
     assert np.abs(c*p(x)-(c*p)(x))<1e-13
     assert np.abs(c*p(x)-(p*c)(x))<1e-13
 
-def test_deriv_power():
-    p = Polynomial(PowerBasis(), [1,0,-1])
-    assert np.abs(p.derivative()(1)-(-2))<1e-10
-    assert np.abs(p.derivative()(5)-(-10))<1e-10
-
 def test_deriv_lagrange():
     p = Polynomial(LagrangeBasis([-1,0,1]), [1,0,-1])
     assert np.abs(p.derivative()(1)-(-1))<1e-10
@@ -104,22 +99,6 @@ def check_vectorized(b):
         z = np.zeros(shape)
         assert p(z).shape == shape
 
-
-def test_division_power():
-
-    for (l1,l2) in [([1,0,0,1],[1,1]),
-                    ([1,1],[1,0,0,1]),
-                    ([1,0,0,1],[1,0,0,1]),
-                    ([1,0,0,1],[1])]:
-        yield check_divmod, Polynomial(PowerBasis(),l1), Polynomial(PowerBasis(),l1)
-        
-def check_divmod(p1, p2):
-    q,r = divmod(p1,p2)
-    for x in np.arange(8):
-        assert len(r.coefficients)<len(p2.coefficients)
-        assert np.abs(p1(x)-(p2(x)*q(x)+r(x)))<1e-8
-        assert p1//p2 == q
-        assert p1%p2 == r
 
 def test_polyfit_exact():
     x = [-1,0,1]
