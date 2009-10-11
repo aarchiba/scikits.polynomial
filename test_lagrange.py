@@ -24,6 +24,11 @@ def test_bit_reverse():
     for i in range(n):
         assert i in rs
 
+def test_points():
+    pts = [-1,0,1]
+    b = LagrangeBasis(pts)
+    b.extend_points(4)
+    assert abs(b.points[-1])>1e-2
 
 def test_examples():
     for (l, x, y) in [([3],0,3),

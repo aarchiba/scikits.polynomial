@@ -105,8 +105,15 @@ class LagrangeBasis(Basis):
         while n>len(self.points)+len(new_points):
             x = chebyshev_points_sequence(self.first_chebyshev_point_not_tried)
             x = x*(b-a)/2. + (a+b)/2.
-            if x not in self.initial_points_set:
+
+            # Ensure new points aren't too close to old points
+            if self.initial_points:
+                d = (1./8)*abs(b-a)/float(self.first_chebyshev_point_not_tried+1)**2
+                if min(*[abs(p-x) for p in self.initial_points])>d:
+                    new_points.append(x)
+            else:
                 new_points.append(x)
+
             self.first_chebyshev_point_not_tried += 1
         if new_points:
             points = np.zeros(n)
