@@ -75,6 +75,10 @@ class Polynomial:
     def __rmul__(self, other):
         return self*other
 
+    def __pow__(self, other):
+        # In some bases, e.g. Lagrange, there may be a faster exponentiation
+        return Polynomial(self.basis,self.basis.power(self.coefficients, other))
+
     def __neg__(self):
         return Polynomial(self.basis, -self.coefficients)
 
@@ -162,6 +166,27 @@ class Basis:
     def multiply(self, coefficients, other_coefficients):
         """Compute the coefficients of the product."""
         raise NotImplementedError
+
+    def power(self, coefficients, power):
+        """Raise to an integer power."""
+        if power != int(power):
+            raise ValueError("Can only raise polynomials to integer powers")
+        power = int(power)
+        if power<0:
+            raise ValueError("Cannot raise polynomials to negative powers")
+
+        r = np.ones(1)
+        m = 1
+        while 2*m<=power:
+            m*=2
+
+        while m:
+            r = self.multiply(r,r)
+            if m & power:
+                r = self.multiply(r,coefficients)
+            m//=2
+
+        return r
 
     def derivative(self, coefficients):
         """Compute the coefficients of the derivative."""

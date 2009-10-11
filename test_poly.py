@@ -16,6 +16,10 @@ def test_equal_by_values():
     assert not equal_by_values(p1, p2)
 
 
+def test_power():
+    p = Polynomial(PowerBasis(),[0,1])
+    for i in range(16):
+        assert equal_by_values(p**i, reduce(lambda x, y: x*y, [p]*i, Polynomial(PowerBasis(), [1])))
 
 # support tests used for all kinds of polynomials
 
