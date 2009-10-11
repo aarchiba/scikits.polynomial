@@ -82,6 +82,13 @@ def check_scalar_operation(op, c, l):
         assert_almost_equal(op(c,p(x)),op(c,p)(x))
 
 # FIXME: test for division by scalar zero
+# Should division by zero produce a polynomial with NaN/Inf coefficients?
+# If so, what about division by a zero polynomial? We want to make sure
+# we get the same behaviour from all of p/0., p/0, p/Polynomial(b,[]), 
+# and p/Polynomial(b,[0]).
+
+# FIXME: allow automatic basis conversion of polynomials that are
+# obviously constant or zero? 
 
 def test_divmod():
 

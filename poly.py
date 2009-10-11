@@ -1,6 +1,27 @@
 import numpy as np
 import numpy.linalg
 
+# FIXME: is this the right design?
+# A possible improvement: instead of constructing polynomials as
+# p = Polynomial(basis, coefficients)
+# maybe use
+# p = basis.polynomial(coefficients)
+# This would allow Polynomial to be usefully subclassed, for when
+# bases allow more operations or different implementations. But it 
+# looks a bit unnatural, and doesn't allow a default value for the basis
+# argument (not that that's necessarily a good idea). There's also the 
+# question of how to prevent people from calling the constructor directly
+# and getting plain Polynomials even for bases that expect subclasses.
+# One solution to this problem is to use __new__.
+# 
+# Of course, if we're allowing different implementations, then maybe
+# the code for (e.g.) evaluation should be moved from the basis to the
+# polynomial objects.
+#
+# I like the current design because it nicely separates all the 
+# operator overloading and type checking from the numerical algorithms.
+#
+
 class Polynomial:
     """Class for representing polynomials.
 
@@ -37,7 +58,6 @@ class Polynomial:
                     + self.basis.extend(other.coefficients, l))
             return Polynomial(self.basis, c)
         else:
-            # FIXME: is this correct?
             return self + Polynomial(self.basis, [other])
     def __radd__(self, other):
         return self+other
