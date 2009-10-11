@@ -23,10 +23,10 @@ class PowerBasis(GradedBasis):
     def multiply(self, coefficients, other_coefficients):
         if len(coefficients)==0 or len(other_coefficients)==0:
             return np.zeros(0)
-        c = np.zeros(len(coefficients)+len(other_coefficients)-1)
-        for i, ci in enumerate(coefficients):
-            c[i:i+len(other_coefficients)] += ci*other_coefficients
-        return c
+        # FIXME: use FFT-based fast convolution where appropriate
+        # (actually probably never; degrees high enough for it to
+        # be faster are almost certainly numerically useless).
+        return np.convolve(coefficients, other_coefficients, mode='full')
 
     def derivative(self, coefficients):
         if len(coefficients)==0:
