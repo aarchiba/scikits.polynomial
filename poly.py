@@ -241,7 +241,7 @@ class GradedBasis(Basis):
 
         """
         if n<len(coefficients):
-            raise ValueError("extend can only make coefficient arrays longer")
+            return coefficients[:n]
         z = np.zeros(n)
         z[:len(coefficients)] = coefficients
         return z
