@@ -13,16 +13,16 @@ from cheb import ChebyshevBasis, _dct
 
 
 def test_equal_by_values():
-    p1 = Polynomial(PowerBasis(),[1,2,3,4])
-    p2 = Polynomial(PowerBasis(),[1,2,3])
+    p1 = PowerBasis().polynomial([1,2,3,4])
+    p2 = PowerBasis().polynomial([1,2,3])
     assert equal_by_values(p1, p1)
     assert not equal_by_values(p1, p2)
 
 
 def test_power():
-    p = Polynomial(PowerBasis(),[0,1])
+    p = PowerBasis().polynomial([0,1])
     for i in range(16):
-        assert equal_by_values(p**i, reduce(lambda x, y: x*y, [p]*i, Polynomial(PowerBasis(), [1])))
+        assert equal_by_values(p**i, reduce(lambda x, y: x*y, [p]*i, PowerBasis().one()))
 
 # support tests used for all kinds of polynomials
 
@@ -34,13 +34,13 @@ def check_operation(op, p1, p2):
         assert_almost_equal(op(p1(x),p2(x)),op(p1,p2)(x))
 
 def check_coefficient_addition(b, l1, l2):
-    p1 = Polynomial(b,l1)
-    p2 = Polynomial(b,l2)
+    p1 = b.polynomial(l1)
+    p2 = b.polynomial(l2)
     n = max(len(l1),len(l2))
     c = np.zeros(n)
     c[:len(l1)] += l1
     c[:len(l2)] += l2
-    p = Polynomial(b,c)
+    p = b.polynomial(c)
     assert equal_by_values(p1+p2, p)
 
 
