@@ -99,7 +99,7 @@ class PowerBasis(GradedBasis):
     def convert(self, polynomial):
         n = len(polynomial.coefficients)
         if n==0:
-            return Polynomial(self, [])
+            return self.zero()
         rc = np.zeros(n)
         fact = 1
         for i in range(n):

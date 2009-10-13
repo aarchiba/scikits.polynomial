@@ -23,7 +23,7 @@ def test_examples():
                       ([0,0,1], -1, 1),
                       ]:
         b = ChebyshevBasis()
-        p = Polynomial(b, l)
+        p = b.polynomial(l)
         yield check_example, p, x, y
 
 def test_operations():
@@ -33,8 +33,8 @@ def test_operations():
                      ([0,0,0,0,1], [1,2,3,4]),
                      ([], [])]:
         b = ChebyshevBasis()
-        p1 = Polynomial(b,l1)
-        p2 = Polynomial(b,l2)
+        p1 = b.polynomial(l1)
+        p2 = b.polynomial(l2)
         yield check_operation, (lambda x, y:x+y), p1, p2
         yield check_operation, (lambda x, y:x-y), p1, p2
         yield check_operation, (lambda x, y:x*y), p1, p2
@@ -49,7 +49,7 @@ def test_scalar_operations():
                    (0, [2,5]),
                    (3, [])]:
         b = ChebyshevBasis()
-        p = Polynomial(b,l)
+        p = b.polynomial(l)
         yield check_scalar_operation, (lambda c, p: c*p), c, p
         yield check_scalar_operation, (lambda c, p: p*c), c, p
         yield check_scalar_operation, (lambda c, p: p+c), c, p
@@ -72,15 +72,15 @@ def test_deriv_product():
                     ([],[1,2,3]),
                     ([],[])]:
         b = ChebyshevBasis()
-        p1 = Polynomial(b,l1)
-        p2 = Polynomial(b,l2)
+        p1 = b.polynomial(l1)
+        p2 = b.polynomial(l2)
         yield check_derivative_linearity, p1, p2
         yield check_product_rule, p1, p2
 
 def test_power():
-    p = Polynomial(ChebyshevBasis(),[0,1])
+    p = ChebyshevBasis().polynomial([0,1])
     for i in range(16):
-        assert equal_by_values(p**i, reduce(lambda x, y: x*y, [p]*i, Polynomial(ChebyshevBasis(), [1])))
+        assert equal_by_values(p**i, reduce(lambda x, y: x*y, [p]*i, ChebyshevBasis().one()))
 
 
 def test_from_roots():
@@ -90,13 +90,13 @@ def test_from_roots():
     assert_array_almost_equal(p(r),0)
 
 def test_interval_conversion():
-    p = Polynomial(ChebyshevBasis(),[0,0,1])
+    p = ChebyshevBasis().polynomial([0,0,1])
     q = ChebyshevBasis(interval=(1,10)).convert(p)
 
     assert equal_by_values(p,q)
 def test_interval():
-    p = Polynomial(ChebyshevBasis(),[0,1])
-    q = Polynomial(ChebyshevBasis(interval=(0,1)),[0.5,0.5])
+    p = ChebyshevBasis().polynomial([0,1])
+    q = ChebyshevBasis(interval=(0,1)).polynomial([0.5,0.5])
     assert equal_by_values(p,q)
 
     assert equal_by_values(p,q)
