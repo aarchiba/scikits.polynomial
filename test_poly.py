@@ -29,7 +29,7 @@ def test_power():
 def check_example(p,x,y):
     assert_almost_equal(p(x),y)
 
-def check_standard(b,division=True,coefficient_addition=True):
+def check_standard(b,division=True,coefficient_addition=True,roots=True):
 
     for (l1, l2) in [([], [1,2,3]),
                  ([1,2], [3,4]),
@@ -77,6 +77,10 @@ def check_standard(b,division=True,coefficient_addition=True):
         p2 = b.polynomial(l2)
         yield check_product_rule, p1, p2
         yield check_derivative_linearity, p1, p2
+
+    if roots:
+        for l in [[-1,0,1], [1], [], [1,1,-1,-1]]:
+            yield check_real_roots, b, l
 
 def check_operation(op, p1, p2):
     for x in [-1,0,0.3,1]:
@@ -138,6 +142,12 @@ def check_X(b):
     xs = np.linspace(-1,1,10)
     assert_array_almost_equal(b.X()(xs), xs)
 
+def check_real_roots(b,l):
+    roots = np.copy(l)
+    roots.sort()
+    r = b.from_roots(l).roots()
+    r.sort()
+    assert_array_almost_equal(r,roots)
 # specific tests that don't really belong here
 
 def test_from_roots():

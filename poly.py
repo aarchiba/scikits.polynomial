@@ -142,6 +142,42 @@ class Polynomial(object):
     def __rtruediv__(self,other):
         raise ValueError("Cannot do true division by polynomials")
 
+    def companion_matrix(self):
+        """Compute the companion matrix of this polynomial.
+
+        The companion matrix is the linear operator representing
+        multiplication by X modulo this polynomial. Its minimal
+        polynomial is this polynomial, so that its eigenvalues
+        with multiplicity are the roots of this polynomial.
+
+        This implementation will work for any polynomial type
+        that implements division, but it is probably not nearly
+        as efficient or numerically stable as a special-purpose
+        implementation.
+
+        """
+        # FIXME: not tested because all subclasses override this method
+        n = len(self.coefficients)
+        M = np.zeros((n,n))
+        for i in range(n):
+            c = np.zeros(n)
+            c[i] = 1
+            p = (self.basis.polynomial(c)*self.basis.X()) % self
+            r = p.coefficients
+            if len(r)<n:
+                r = self.basis.extend(r,n)
+            M[:,i] = r
+        return M
+
+    def roots(self):
+        """Compute the roots.
+        
+        This implementation extracts the eigenvalues of the companion
+        matrix using numpy's built-in eigenvalue solver.
+
+        """
+        return numpy.linalg.eigvals(self.companion_matrix())
+
 def equal_by_values(p1, p2, interval=(-1,1), tol=1e-8):
     """Compare two polynomials by evaluating them at many points.
 

@@ -41,6 +41,12 @@ class ChebyshevPolynomial(Polynomial):
             return self.basis.zero()
         return self.basis.polynomial(chebyshev.chebint(self.coefficients))
 
+    def roots(self):
+        if len(self.coefficients)<2:
+            return np.zeros(0)
+        a, b = self.basis.interval
+        return chebyshev.chebroots(self.coefficients)*((b-a)/2.)+(a+b)/2.
+
 
 class ChebyshevBasis(GradedBasis):
 

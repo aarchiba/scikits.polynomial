@@ -39,9 +39,9 @@ def test_interpolating():
     assert equal_by_values(p1,p2)
 
 def test_standard():
-    for t in check_standard(LagrangeBasis(),coefficient_addition=False,division=False):
+    for t in check_standard(LagrangeBasis(),coefficient_addition=False,division=False,roots=False):
         yield t
-    for t in check_standard(LagrangeBasis([1,3,-2]),coefficient_addition=False,division=False):
+    for t in check_standard(LagrangeBasis([1,3,-2]),coefficient_addition=False,division=False,roots=False):
         yield t
 
 def test_power():

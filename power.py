@@ -75,7 +75,14 @@ class PowerPolynomial(Polynomial):
         return (self.basis.polynomial(q), 
                 self.basis.polynomial(c[:len(other_coefficients)-1]))
 
-
+    def companion_matrix(self):
+        n = len(self.coefficients)-1
+        if n<1:
+            return np.zeros((0,0))
+        M = np.zeros((n,n))
+        M[:,-1] = -self.coefficients[:-1]/self.coefficients[-1]
+        M += np.diag(np.ones(n-1),-1)
+        return M
 
 
 class PowerBasis(GradedBasis):
