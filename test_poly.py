@@ -29,6 +29,55 @@ def test_power():
 def check_example(p,x,y):
     assert_almost_equal(p(x),y)
 
+def check_standard(b,division=True,coefficient_addition=True):
+
+    for (l1, l2) in [([], [1,2,3]),
+                 ([1,2], [3,4]),
+                 ([1], [1,2,3,4]),
+                 ([0,0,0,0,1], [1,2,3,4]),
+                 ([], [])]:
+        p1 = b.polynomial(l1)
+        p2 = b.polynomial(l2)
+        yield check_operation, (lambda x, y:x+y), p1, p2
+        yield check_operation, (lambda x, y:x-y), p1, p2
+        yield check_operation, (lambda x, y:x*y), p1, p2
+        if coefficient_addition:
+            yield check_coefficient_addition, b, l1, l2
+
+    for (c, l) in [(1, [1,2,3]),
+                   (10, [1,2,3]),
+                   (0.1, [1,2,3]),
+                   (3, [2]),
+                   (0, [2,5]),
+                   (3, [])]:
+        p = b.polynomial(l)
+        yield check_scalar_operation, (lambda c, p: c*p), c, p
+        yield check_scalar_operation, (lambda c, p: p*c), c, p
+        yield check_scalar_operation, (lambda c, p: p+c), c, p
+        yield check_scalar_operation, (lambda c, p: c+p), c, p
+        yield check_scalar_operation, (lambda c, p: p-c), c, p
+        yield check_scalar_operation, (lambda c, p: c-p), c, p
+        if c!=0:
+            yield check_scalar_operation, (lambda c, p: p/c), c, p
+
+    if division:
+        for (l1,l2) in [([1,0,0,1],[1,1]),
+                        ([-1,-4,0,0],[1,4]),
+                        ([1,1],[1,0,0,1]),
+                        ([1,0,0,1],[1,0,0,1]),
+                        ([1,0,0,1],[1])]:
+            yield check_divmod, b.polynomial(l1), b.polynomial(l1)
+     
+    for (l1,l2) in [([1,2,3],[4,5,6]),
+                ([1,2,3],[1]),
+                ([1],[1]),
+                ([],[1,2,3]),
+                ([],[])]:
+        p1 = b.polynomial(l1)
+        p2 = b.polynomial(l2)
+        yield check_product_rule, p1, p2
+        yield check_derivative_linearity, p1, p2
+
 def check_operation(op, p1, p2):
     for x in [-1,0,0.3,1]:
         assert_almost_equal(op(p1(x),p2(x)),op(p1,p2)(x))

@@ -23,6 +23,15 @@ class ChebyshevPolynomial(Polynomial):
         return self.basis.polynomial(chebyshev.chebmul(self.coefficients, 
                                                        other.coefficients))
 
+    def divide(self, other, tol=None):
+        if not self.iscompatible(other):
+            raise IncompatibleBasesError("Polynomials must have the same basis to allow division")
+        if len(other.coefficients)==0:
+            raise ValueError("Polynomial division by zero")
+        
+        q, r = chebyshev.chebdiv(self.coefficients, other.coefficients)
+        return self.basis.polynomial(q), self.basis.polynomial(r)
+
     def derivative(self):
         if len(self.coefficients)==0:
             return self.basis.zero()

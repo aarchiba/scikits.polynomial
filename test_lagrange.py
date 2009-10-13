@@ -5,14 +5,7 @@ from poly import equal_by_values
 from power import PowerBasis
 from lagrange import LagrangeBasis, bit_reverse, chebyshev_points_sequence, lagrange_from_roots
 
-from test_poly import check_example, \
-        check_operation, \
-        check_operation, \
-        check_coefficient_addition, \
-        check_scalar_operation, \
-        check_divmod, \
-        check_product_rule, \
-        check_derivative_linearity
+from test_poly import check_example, check_standard
 
 def test_bit_reverse():
     n = 64
@@ -45,56 +38,11 @@ def test_interpolating():
     p2 = LagrangeBasis(xs).polynomial(p1(xs))
     assert equal_by_values(p1,p2)
 
-def test_operations():
-    for (l1, l2) in [([], [1,2,3]),
-                     ([1,2], [3,4]),
-                     ([1], [1,2,3,4]),
-                     ([0,0,0,0,1], [1,2,3,4]),
-                     ([], [])]:
-        b = LagrangeBasis()
-        p1 = b.polynomial(l1)
-        p2 = b.polynomial(l2)
-        yield check_operation, (lambda x, y:x+y), p1, p2
-        yield check_operation, (lambda x, y:x-y), p1, p2
-        yield check_operation, (lambda x, y:x*y), p1, p2
-        if len(l1)==len(l2):
-            yield check_coefficient_addition, b, l1, l2
-
-def test_scalar_operations():
-    for (c, l) in [(1, [1,2,3]),
-                   (10, [1,2,3]),
-                   (0.1, [1,2,3]),
-                   (3, [2]),
-                   (0, [2,5]),
-                   (3, [])]:
-        b = LagrangeBasis()
-        p = b.polynomial(l)
-        yield check_scalar_operation, (lambda c, p: c*p), c, p
-        yield check_scalar_operation, (lambda c, p: p*c), c, p
-        yield check_scalar_operation, (lambda c, p: p+c), c, p
-        yield check_scalar_operation, (lambda c, p: c+p), c, p
-        yield check_scalar_operation, (lambda c, p: p-c), c, p
-        yield check_scalar_operation, (lambda c, p: c-p), c, p
-        if c!=0:
-            yield check_scalar_operation, (lambda c, p: p/c), c, p
-
-def test_deriv_product():
-    """Test that the product rule holds.
-
-    If an operator is linear and respects the product
-    rule, then it is the derivative operator (on polynomials,
-    at least).
-    """
-    for (l1,l2) in [([1,2,3],[4,5,6]),
-                    ([1,2,3],[1]),
-                    ([1],[1]),
-                    ([],[1,2,3]),
-                    ([],[])]:
-        b = LagrangeBasis()
-        p1 = b.polynomial(l1)
-        p2 = b.polynomial(l2)
-        yield check_derivative_linearity, p1, p2
-        yield check_product_rule, p1, p2
+def test_standard():
+    for t in check_standard(LagrangeBasis(),coefficient_addition=False,division=False):
+        yield t
+    for t in check_standard(LagrangeBasis([1,3,-2]),coefficient_addition=False,division=False):
+        yield t
 
 def test_power():
     b = LagrangeBasis()
