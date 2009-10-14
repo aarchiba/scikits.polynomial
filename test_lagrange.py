@@ -4,6 +4,7 @@ from numpy.testing import assert_almost_equal, assert_array_almost_equal
 from poly import equal_by_values
 from power import PowerBasis
 from lagrange import LagrangeBasis, bit_reverse, chebyshev_points_sequence, lagrange_from_roots
+import lagrange
 
 from test_poly import check_example, check_standard
 
@@ -56,3 +57,13 @@ def test_from_roots():
 
     p = lagrange_from_roots(r)
     assert_array_almost_equal(p(r),0)
+
+def test_shortnames():
+
+    print lagrange.lagadd([1,2,3],[4,5,6])
+    print lagrange.lagsub([1,2,3],[4,5,6])
+    #lagrange.lagadd([1,2,3],[1])
+    #lagrange.lagmul([1,2],[3,4])
+    #lagrange.lagder([1,2],interval=(0,1))
+    #lagrange.lagder([1,2],(0,1))
+    assert False

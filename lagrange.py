@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.linalg
 
-from poly import Polynomial, Basis
+from poly import Polynomial, Basis, declare_functions
 
 def bit_reverse(n, denom):
     """Return the fraction whose binary expansion is the reverse of n
@@ -283,3 +283,6 @@ def lagrange_from_roots(roots, interval=None):
     for rt in roots:
         r *= X-rt
     return r
+
+
+declare_functions(globals(), "lag", LagrangeBasis)

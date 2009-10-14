@@ -230,6 +230,8 @@ class Basis(object):
         l = max(len(coefficients),len(other_coefficients))
         return (self.extend(coefficients, l) 
                 + self.extend(other_coefficients, l))
+    def subtract(self, coefficients, other_coefficients):
+        return self.add(coefficients, -np.array(other_coefficients))
         
     def multiply(self, coefficients, other_coefficients):
         """Multiply two sets of coefficients."""
@@ -355,3 +357,96 @@ def polyfit(x, y, deg, basis=None):
     p = 0
     return basis.polynomial(c)
 
+def declare_functions(module_globals, prefix, basis_class, **extras):
+    # This is deeply, deeply wrong.
+    import inspect
+
+    names = {'add': basis_class.add,
+             'sub': basis_class.subtract,
+             #'ext': basis_class.extend,
+             #'val': basis_class.evaluate,
+             #'int': basis_class.antiderivative,
+             #'der': basis_class.derivative,
+             #'mul': basis_class.multiply,
+             #'div': basis_class.divide,
+             }
+    for k in extras:
+        names[k] = extras[k]
+
+    b_args, b_varargs, b_varkw, b_defaults = inspect.getargspec(basis_class.__init__)
+    if b_defaults is None:
+        b_defaults = []
+    if b_varargs is not None or b_varkw is not None:
+        raise ValueError("Cannot cope with a basis whose initializer has varargs.")
+    b_needed_args = b_args[:len(b_args)-len(b_defaults)]
+    b_defaulted_args = zip(b_args[len(b_args)-len(b_defaults):],b_defaults)
+
+    for (name,function) in names.items():
+
+        args, varargs, varkw, defaults = inspect.getargspec(function)
+        if defaults is None:
+            defaults = []
+        if varargs is not None or varkw is not None:
+            raise ValueError("Cannot cope with function %s because it has varargs." % function)
+
+        if args[0]!='self':
+            raise ValueError("%s does not appear to be an unbound method" % function)
+        args = args[1:]
+
+        needed_args = args[:len(args)-len(defaults)]
+        defaulted_args = zip(args[len(args)-len(defaults):],defaults)
+
+        print "Creating wrapper for %s" % function
+        def func(*args,**kwargs):
+            
+            kwargs = kwargs.copy()
+            funcargs = {}
+            basis_args = {}
+
+            n=min(len(args),len(needed_args))
+            for i in range(n):
+                funcargs[needed_args[i]] = args[i]
+            args = args[n:]
+
+            n=min(len(args),len(b_needed_args))
+            for i in range(n):
+                basis_args[b_needed_args[i]] = args[i]
+            args = args[n:]
+
+            n=min(len(args),len(defaulted_args))
+            for i in range(n):
+                funcargs[defaulted_args[i][0]] = args[i]
+            args = args[n:]
+
+            n=min(len(args),len(b_defaulted_args))
+            for i in range(n):
+                basis_args[b_defaulted_args[i][0]] = args[i]
+            args = args[n:]
+
+            for (k,v) in defaulted_args:
+                if k in kwargs:
+                    funcargs[k] = kwargs[k]
+                    del kwargs[k]
+                elif k not in funcargs:
+                    funcargs[k] = v
+
+            for (k,v) in b_defaulted_args:
+                if k in kwargs:
+                    basis_args[k] = kwargs[k]
+                    del kwargs[k]
+                elif k not in basis_args:
+                    basis_args[k] = v
+
+            if kwargs:
+                for k in kwargs:
+                    raise ValueError("Keyword argument '%s' not recognized in either %s or %s" % (k, function, basis_class.__init__))
+
+            basis = basis_class(**basis_args)
+            print "Calling %s with basis %s and arguments %s" % (function, basis, funcargs)
+            return function(basis,**funcargs)
+
+        func.__name__ = prefix+name
+
+        module_globals[func.__name__] = func
+        if '__all__' in module_globals:
+            module_globals['__all__'].append(func.__name__)
