@@ -8,53 +8,20 @@ except ImportError:
 from poly import Polynomial, Basis, GradedBasis
 import chebyshev
 
-class ChebyshevPolynomial(Polynomial):
-
-    def __call__(self, x):
-        if len(self.coefficients)==0:
-            # FIXME: same shape as x.
-            return 0.
-        return chebyshev.chebval(x, self.coefficients, 
-                domain=self.basis.interval)
-
-    def _multiply_polynomial(self, other):
-        if len(self.coefficients)==0 or len(other.coefficients)==0:
-            return self.basis.zero()
-        return self.basis.polynomial(chebyshev.chebmul(self.coefficients, 
-                                                       other.coefficients))
-
-    def divide(self, other, tol=None):
-        if not self.iscompatible(other):
-            raise IncompatibleBasesError("Polynomials must have the same basis to allow division")
-        if len(other.coefficients)==0:
-            raise ValueError("Polynomial division by zero")
-        
-        q, r = chebyshev.chebdiv(self.coefficients, other.coefficients)
-        return self.basis.polynomial(q), self.basis.polynomial(r)
-
-    def derivative(self):
-        if len(self.coefficients)==0:
-            return self.basis.zero()
-        return self.basis.polynomial(chebyshev.chebder(self.coefficients))
-    def antiderivative(self):
-        if len(self.coefficients)==0:
-            return self.basis.zero()
-        return self.basis.polynomial(chebyshev.chebint(self.coefficients))
-
-    def roots(self):
-        if len(self.coefficients)<2:
-            return np.zeros(0)
-        a, b = self.basis.interval
-        return chebyshev.chebroots(self.coefficients)*((b-a)/2.)+(a+b)/2.
-
-
 class ChebyshevBasis(GradedBasis):
 
     def __init__(self, interval=(-1,1)):
         GradedBasis.__init__(self)
-        self.polynomial_class = ChebyshevPolynomial
+        self.polynomial_class = Polynomial
         a, b = interval # type checking
         self.interval = (float(a),float(b))
+
+    def evaluate(self, coefficients, x):
+        if len(coefficients)==0:
+            # FIXME: same shape as x.
+            return 0.
+        return chebyshev.chebval(x, coefficients, 
+                domain=self.interval)
 
     def one(self):
         return self.polynomial([1])
@@ -82,6 +49,34 @@ class ChebyshevBasis(GradedBasis):
         c[0] /= 2.
 
         return self.polynomial((2./n)*c)
+
+    def multiply(self, coefficients, other_coefficients):
+        if len(coefficients)==0 or len(other_coefficients)==0:
+            return np.zeros(0)
+        return chebyshev.chebmul(coefficients, other_coefficients)
+
+    def divide(self, coefficients, other_coefficients):
+        if len(other_coefficients)==0:
+            raise ValueError("Polynomial division by zero")
+        
+        q, r = chebyshev.chebdiv(coefficients, other_coefficients)
+        return q, r
+
+    def roots(self,coefficients):
+        if len(coefficients)<2:
+            return np.zeros(0)
+        a, b = self.interval
+        return chebyshev.chebroots(coefficients)*((b-a)/2.)+(a+b)/2.
+
+    def derivative(self, coefficients):
+        if len(coefficients)==0:
+            return np.zeros(0)
+        return chebyshev.chebder(coefficients)
+    def antiderivative(self, coefficients):
+        if len(coefficients)==0:
+            return np.zeros(0)
+        return chebyshev.chebint(coefficients)
+
 
 def _dct(x, type=2, axis=-1):
     """

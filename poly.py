@@ -35,31 +35,23 @@ class Polynomial(object):
         return (self.iscompatible(other)
                 and np.all(self.coefficients==other.coefficients))
     def __call__(self, x):
-        raise NotImplementedError
+        return self.basis.evaluate(self.coefficients, x)
 
     def __add__(self, other):
         if isinstance(other,Polynomial):
             if not self.iscompatible(other):
                 raise IncompatibleBasesError("Polynomials must be in the same basis to be added")
-            l = max(len(self.coefficients),len(other.coefficients))
-            c = (self.basis.extend(self.coefficients, l) 
-                    + self.basis.extend(other.coefficients, l))
-            return self.basis.polynomial(c)
+            return self.basis.polynomial(self.basis.add(self.coefficients,other.coefficients))
         else:
             return self + self.basis.polynomial([other])
     def __radd__(self, other):
         return self+other
 
     def __mul__(self, other):
-        if len(self.coefficients)==0:
-            return self.basis.zero()
         if isinstance(other,Polynomial):
-            # FIXME: Allow constants in incompatible bases?
-            if len(other.coefficients)==0:
-                return self.basis.zero()
             if not self.iscompatible(other):
                 raise IncompatibleBasesError("Polynomials must be in the same basis to be multiplied")
-            return self._multiply_polynomial(other)
+            return self.basis.polynomial(self.basis.multiply(self.coefficients,other.coefficients))
         else:
             c = np.copy(self.coefficients)
             c *= other
@@ -67,30 +59,10 @@ class Polynomial(object):
 
     def __rmul__(self, other):
         return self*other
-    def _multiply_polynomial(self,other):
-        """Multiply two non-zero compatible polynomials."""
-        raise NotImplementedError
 
     def __pow__(self, power):
         """Raise to an integer power."""
-        if power != int(power):
-            raise ValueError("Can only raise polynomials to integer powers")
-        power = int(power)
-        if power<0:
-            raise ValueError("Cannot raise polynomials to negative powers")
-
-        r = self.basis.one()
-        m = 1
-        while 2*m<=power:
-            m*=2
-
-        while m:
-            r *= r
-            if m & power:
-                r *= self
-            m//=2
-
-        return r
+        return self.basis.polynomial(self.basis.power(self.coefficients, power))
 
     def __neg__(self):
         return self.basis.polynomial(-self.coefficients)
@@ -101,9 +73,9 @@ class Polynomial(object):
         return other + (-self)
 
     def derivative(self):
-        raise NotImplementedError
+        return self.basis.polynomial(self.basis.derivative(self.coefficients))
     def antiderivative(self):
-        raise NotImplementedError
+        return self.basis.polynomial(self.basis.antiderivative(self.coefficients))
 
     def __repr__(self):
         return "<Polynomial basis=%s coefficients=%s>" % (self.basis, self.coefficients)
@@ -117,7 +89,10 @@ class Polynomial(object):
         In some representations this is an approximate process; for this 
         tol defines the tolerance.
         """
-        raise NotImplementedError
+        if not self.iscompatible(other):
+            raise IncompatibleBasesError("Polynomials in different bases cannot be divided")
+        q, r = self.basis.divide(self.coefficients, other.coefficients)
+        return self.basis.polynomial(q), self.basis.polynomial(r)
 
     def __divmod__(self, other):
         if isinstance(other, Polynomial):
@@ -150,33 +125,13 @@ class Polynomial(object):
         polynomial is this polynomial, so that its eigenvalues
         with multiplicity are the roots of this polynomial.
 
-        This implementation will work for any polynomial type
-        that implements division, but it is probably not nearly
-        as efficient or numerically stable as a special-purpose
-        implementation.
-
         """
         # FIXME: not tested because all subclasses override this method
-        n = len(self.coefficients)
-        M = np.zeros((n,n))
-        for i in range(n):
-            c = np.zeros(n)
-            c[i] = 1
-            p = (self.basis.polynomial(c)*self.basis.X()) % self
-            r = p.coefficients
-            if len(r)<n:
-                r = self.basis.extend(r,n)
-            M[:,i] = r
-        return M
+        return self.basis.companion_matrix(self.coefficients)
 
     def roots(self):
-        """Compute the roots.
-        
-        This implementation extracts the eigenvalues of the companion
-        matrix using numpy's built-in eigenvalue solver.
-
-        """
-        return numpy.linalg.eigvals(self.companion_matrix())
+        """Compute the roots."""
+        return self.basis.roots(self.coefficients)
 
 def equal_by_values(p1, p2, interval=(-1,1), tol=1e-8):
     """Compare two polynomials by evaluating them at many points.
@@ -211,6 +166,15 @@ class Basis(object):
         """
         self.polynomial_class = None
 
+    def __eq__(self, other):
+        """Test for equality."""
+        raise NotImplementedError
+    def __ne__(self, other):
+        return not self==other
+    def __hash__(self):
+        raise NotImplementedError
+
+    # Polynomial-producing functions
     def polynomial(self, coefficients):
         """Make a polynomial in this basis with the given coefficients.
         
@@ -241,6 +205,15 @@ class Basis(object):
             r *= X-rt
         return r
 
+    def convert(self, polynomial):
+        """Convert the given polynomial to this basis."""
+        raise NotImplementedError
+
+    # Coefficient-producing functions
+    def evaluate(self, coefficients, x):
+        """Evaluate the polynomial at x."""
+        raise NotImplementedError
+
     def extend(self, coefficients, n):
         """Extend a coefficient list to length n.
 
@@ -252,17 +225,81 @@ class Basis(object):
         """
         raise NotImplementedError
 
-    def __eq__(self, other):
-        """Test for equality."""
-        raise NotImplementedError
-    def __ne__(self, other):
-        return not self==other
-    def __hash__(self):
+    def add(self, coefficients, other_coefficients):
+        """Add two sets of coefficients."""
+        l = max(len(coefficients),len(other_coefficients))
+        return (self.extend(coefficients, l) 
+                + self.extend(other_coefficients, l))
+        
+    def multiply(self, coefficients, other_coefficients):
+        """Multiply two sets of coefficients."""
         raise NotImplementedError
 
-    def convert(self, polynomial):
-        """Convert the given polynomial to this basis."""
+    def power(self, coefficients, power):
+        """Raise coefficients to the (nonnegative integer) power."""
+        if power != int(power):
+            raise ValueError("Can only raise polynomials to integer powers")
+        power = int(power)
+        if power<0:
+            raise ValueError("Cannot raise polynomials to negative powers")
+
+        r = self.one().coefficients
+        m = 1
+        while 2*m<=power:
+            m*=2
+
+        while m:
+            r = self.multiply(r, r)
+            if m & power:
+                r = self.multiply(r, coefficients)
+            m//=2
+
+        return r
+
+    def divide(self, coefficients, other_coefficients, tol=None):
+        """Polynomial division.
+
+        Given P1 and P2 find Q and R so that P1 = Q*P2 + R and the degree
+        of R is strictly less than the degree of P2. 
+
+        In some representations this is an approximate process; for this 
+        tol defines the tolerance.
+        """
         raise NotImplementedError
+
+    def derivative(self, coefficients):
+        raise NotImplementedError
+    def antiderivative(self, coefficients):
+        raise NotImplementedError
+
+    def companion_matrix(self, coefficients):
+        """Compute the companion matrix of this polynomial.
+
+        The companion matrix is the linear operator representing
+        multiplication by X modulo this polynomial. Its minimal
+        polynomial is this polynomial, so that its eigenvalues
+        with multiplicity are the roots of this polynomial.
+
+        This implementation will work for any polynomial type
+        that implements division, but it is probably not nearly
+        as efficient or numerically stable as a special-purpose
+        implementation.
+
+        """
+        # FIXME: not tested because all subclasses override this method
+        n = len(coefficients)
+        M = np.zeros((n,n))
+        for i in range(n):
+            c = np.zeros(n)
+            c[i] = 1
+            ignore, r = self.divide((self.polynomial(c)*self.X()), coefficients)
+            if len(r)<n:
+                r = self.extend(r,n)
+            M[:,i] = r
+        return M
+
+    def roots(self, coefficients):
+        return numpy.linalg.eigvals(self.companion_matrix(coefficients))
 
 class GradedBasis(Basis):
     """A polynomial basis in which the nth element has degree n."""

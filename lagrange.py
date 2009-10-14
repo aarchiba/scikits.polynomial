@@ -51,90 +51,6 @@ class LagrangePolynomial(Polynomial):
 
     """
 
-    def __call__(self, x):
-        """Evaluate a polynomial at a new point.
-
-        This code uses barycentric interpolation, which is quite stable, 
-        numerically. The weights are currently not cached between calls, 
-        nor does the code use the analytic expression for the weights in
-        the case that the points are Chebyshev points.
-        """
-        self.basis.extend_points(len(self.coefficients))
-        if len(self.coefficients)!=0:
-            w = self.basis.weights(len(self.coefficients))
-
-        def evaluate_scalar(x):
-            if len(self.coefficients)==0:
-                return 0.
-            # special case for when x is one of the given points
-            # FIXME: could be more efficient
-            c = x==self.basis.points[:len(self.coefficients)]
-            if np.any(c):
-                i = np.where(c)[0][0]
-                return self.coefficients[i]
-
-            wx = w/(x-self.basis.points[:len(self.coefficients)])
-            return np.sum(wx*self.coefficients)/np.sum(wx)
-
-        if not np.isscalar(x):
-            x = np.asarray(x)
-            r = np.zeros(x.shape)
-            for (ix, v) in np.ndenumerate(x):
-                r[ix] = evaluate_scalar(v)
-            return r
-        else:
-            return evaluate_scalar(x)
-
-    def _multiply_polynomial(self, other):
-        """Multiply two polynomials.
-
-        This code simply extends the polynomials to a high enough order
-        then does pointwise multiplication.
-        """
-        l = len(self.coefficients)+len(other.coefficients)-1
-        coefficients = self.basis.extend(self.coefficients, l)
-        other_coefficients = self.basis.extend(other.coefficients, l)
-        return self.basis.polynomial(coefficients*other_coefficients)
-    
-    def __pow__(self, power):
-        if power != int(power):
-            raise ValueError("Can only raise polynomials to integer powers")
-        power = int(power)
-        if power<0:
-            raise ValueError("Cannot raise polynomials to negative powers")
-
-        if len(self.coefficients)==0:
-            if power==0:
-                return self.basis.one()
-            else:
-                return self.basis.zero()
-
-        l = power*(len(self.coefficients)-1)+1
-        coefficients = self.basis.extend(self.coefficients, l)
-        return self.basis.polynomial(coefficients**power)
-
-    def derivative(self):
-        if len(self.coefficients)==0:
-            return self.basis.zero()
-
-        D = self.basis.derivative_matrix(len(self.coefficients))
-        return self.basis.polynomial(np.dot(D,self.coefficients)[:-1])
-
-    def antiderivative(self):
-        if len(self.coefficients)==0:
-            return self.basis.zero()
-
-        thresh = 1e-13
-
-        coefficients = self.basis.extend(self.coefficients,
-                                         len(self.coefficients)+1)
-        D = self.basis.derivative_matrix(len(coefficients))
-        U, s, Vh = numpy.linalg.svd(D)
-        ss = 1./s
-        ss[s<thresh*s[0]] = 0
-        c = reduce(np.dot,(Vh.T,np.diag(ss),U.T,coefficients))
-        return self.basis.polynomial(c)
-
 
 
 class LagrangeBasis(Basis):
@@ -169,7 +85,7 @@ class LagrangeBasis(Basis):
         # In principle one could use them to allow Hermite interpolation
         # (i.e. the second occurrence signals a derivative value)
         Basis.__init__(self)
-        self.polynomial_class = LagrangePolynomial
+        self.polynomial_class = Polynomial
         self.initial_points = tuple(initial_points)
         self.points = np.array(initial_points, dtype=np.float)
         if interval is None:
@@ -193,6 +109,41 @@ class LagrangeBasis(Basis):
         return isinstance(other, LagrangeBasis) and self.initial_points == other.initial_points
     def __hash__(self):
         return hash(tuple(self.initial_points)) # Do arrays hash?
+
+    def evaluate(self, coefficients, x):
+        """Evaluate a polynomial at a new point.
+
+        This code uses barycentric interpolation, which is quite stable, 
+        numerically. The weights are currently not cached between calls, 
+        nor does the code use the analytic expression for the weights in
+        the case that the points are Chebyshev points.
+        """
+        self.extend_points(len(coefficients))
+        if len(coefficients)!=0:
+            w = self.weights(len(coefficients))
+
+        def evaluate_scalar(x):
+            if len(coefficients)==0:
+                return 0.
+            # special case for when x is one of the given points
+            # FIXME: could be more efficient
+            c = x==self.points[:len(coefficients)]
+            if np.any(c):
+                i = np.where(c)[0][0]
+                return coefficients[i]
+
+            wx = w/(x-self.points[:len(coefficients)])
+            return np.sum(wx*coefficients)/np.sum(wx)
+
+        if not np.isscalar(x):
+            x = np.asarray(x)
+            r = np.zeros(x.shape)
+            for (ix, v) in np.ndenumerate(x):
+                r[ix] = evaluate_scalar(v)
+            return r
+        else:
+            return evaluate_scalar(x)
+
 
     def extend_points(self, n):
         """Extend the internal list of points."""
@@ -252,6 +203,34 @@ class LagrangeBasis(Basis):
         w = 1./w
         return w
 
+    def multiply(self, coefficients, other_coefficients):
+        """Multiply two polynomials.
+
+        This code simply extends the polynomials to a high enough order
+        then does pointwise multiplication.
+        """
+        l = len(coefficients)+len(other_coefficients)-1
+        coefficients = self.extend(coefficients, l)
+        other_coefficients = self.extend(other_coefficients, l)
+        return coefficients*other_coefficients
+    
+    def power(self, coefficients, power):
+        if power != int(power):
+            raise ValueError("Can only raise polynomials to integer powers")
+        power = int(power)
+        if power<0:
+            raise ValueError("Cannot raise polynomials to negative powers")
+
+        if len(coefficients)==0:
+            if power==0:
+                return self.basis.one()
+            else:
+                return self.basis.zero()
+
+        l = power*(len(coefficients)-1)+1
+        coefficients = self.extend(coefficients, l)
+        return coefficients**power
+
 
     def derivative_matrix(self, n):
         self.extend_points(n)
@@ -261,6 +240,27 @@ class LagrangeBasis(Basis):
         D[np.arange(n),np.arange(n)] = 0
         D[np.arange(n),np.arange(n)] = -np.sum(D,axis=1)
         return D
+
+    def derivative(self, coefficients):
+        if len(coefficients)==0:
+            return np.zeros(0)
+
+        D = self.derivative_matrix(len(coefficients))
+        return np.dot(D,coefficients)[:-1]
+
+    def antiderivative(self, coefficients):
+        if len(coefficients)==0:
+            return np.zeros(0)
+
+        thresh = 1e-13
+
+        coefficients = self.extend(coefficients, len(coefficients)+1)
+        D = self.derivative_matrix(len(coefficients))
+        U, s, Vh = numpy.linalg.svd(D)
+        ss = 1./s
+        ss[s<thresh*s[0]] = 0
+        return reduce(np.dot,(Vh.T,np.diag(ss),U.T,coefficients))
+
 
     def convert(self, polynomial):
         n = len(polynomial.coefficients)
