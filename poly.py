@@ -396,7 +396,6 @@ def declare_functions(module_globals, prefix, basis_class, **extras):
         needed_args = args[:len(args)-len(defaults)]
         defaulted_args = zip(args[len(args)-len(defaults):],defaults)
 
-        print "Creating wrapper for %s" % function
         def func(*args,**kwargs):
             
             kwargs = kwargs.copy()
