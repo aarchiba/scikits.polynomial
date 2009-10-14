@@ -355,3 +355,63 @@ def polyfit(x, y, deg, basis=None):
     p = 0
     return basis.polynomial(c)
 
+def generate_basis(name, underlying_interval,
+        X, mul, val, der, int, div, roots, convert_function=None):
+    class GeneratedBasis(GradedBasis):
+
+        def __init__(self, interval=underlying_interval):
+            GradedBasis.__init__(self)
+            i_a, i_b = interval
+            i_a, i_b = float(i_a), float(i_b)
+            u_a, u_b = underlying_interval
+            u_a, u_b = float(u_a), float(u_b)
+            self.interval = i_a, i_b
+            self.underlying_interval = u_a, u_b
+
+            self.scale = (u_b-u_a)/(i_b-i_a)
+            self.shift = -i_a+u_a/self.scale
+            self.polynomial_class = Polynomial
+
+        def one(self):
+            return self.polynomial([1])
+        def X(self):
+            return self.polynomial(X)/self.scale-self.shift
+        def multiply(self, coefficients, other_coefficients):
+            if len(coefficients)==0 or len(other_coefficients)==0:
+                return np.zeros(0)
+            return mul(coefficients, other_coefficients)
+        def evaluate(self, coefficients, x):
+            if len(coefficients)==0:
+                return np.zeros(np.shape(x))
+            return val((np.asarray(x)+self.shift)*self.scale,coefficients)
+        def divide(self, coefficients, other_coefficients, tol=None):
+            if len(coefficients)==0:
+                return np.zeros(0)
+            if len(other_coefficients)==0:
+                raise ValueError("Polynomial division by zero")
+            if tol is None:
+                return div(coefficients, other_coefficients)
+            else:
+                return div(coefficients, other_coefficients, tol)
+        def derivative(self, coefficients):
+            if len(coefficients)==0:
+                return np.zeros(0)
+            return self.scale*der(coefficients)
+        def antiderivative(self, coefficients):
+            if len(coefficients)==0:
+                return np.zeros(0)
+            return int(coefficients)/self.scale
+        def roots(self, coefficients):
+            if len(coefficients)==0:
+                raise ValueError("Cannot extract roots for the zero polynomial")
+            return roots(coefficients)/self.scale - self.shift
+        def __eq__(self, other):
+            return other.__class__==self.__class__ and other.interval==self.interval
+        def __hash__(self, other):
+            return hash(self.interval)
+        def convert(self, polynomial):
+            return convert_function(self,polynomial)
+        def __repr__(self):
+            return "<%s interval=%s>" % (name, self.interval)
+    
+    return GeneratedBasis

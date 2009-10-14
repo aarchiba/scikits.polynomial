@@ -5,78 +5,34 @@ try:
 except ImportError:
     dct = None
     
-from poly import Polynomial, Basis, GradedBasis
+from poly import Polynomial, Basis, GradedBasis, generate_basis
 import chebyshev
 
-class ChebyshevBasis(GradedBasis):
 
-    def __init__(self, interval=(-1,1)):
-        GradedBasis.__init__(self)
-        self.polynomial_class = Polynomial
-        a, b = interval # type checking
-        self.interval = (float(a),float(b))
+def convert_function(self, polynomial):
+    n = len(polynomial.coefficients)
+    if n==0:
+        return self.zero()
 
-    def evaluate(self, coefficients, x):
-        if len(coefficients)==0:
-            # FIXME: same shape as x.
-            return 0.
-        return chebyshev.chebval(x, coefficients, 
-                domain=self.interval)
+    a, b = self.interval
+    xk = np.cos(np.pi*(np.arange(n)+0.5)/n)
+    fxk = polynomial(((b-a)/2.) * xk + (b+a)/2.)
 
-    def one(self):
-        return self.polynomial([1])
-    def X(self):
-        a, b = self.interval
-        return self.polynomial([(b+a)/2.,(b-a)/2.])
+    c = dct(fxk, type=2)
+    c /= 2.
+    c[0] /= 2.
 
+    return self.polynomial((2./n)*c)
 
-    def __eq__(self, other):
-        return isinstance(other, ChebyshevBasis) and self.interval==other.interval
-    def __hash__(self):
-        return hash(self.interval)
-
-    def convert(self, polynomial):
-        n = len(polynomial.coefficients)
-        if n==0:
-            return self.zero()
-
-        a, b = self.interval
-        xk = np.cos(np.pi*(np.arange(n)+0.5)/n)
-        fxk = polynomial(((b-a)/2.) * xk + (b+a)/2.)
-
-        c = dct(fxk, type=2)
-        c /= 2.
-        c[0] /= 2.
-
-        return self.polynomial((2./n)*c)
-
-    def multiply(self, coefficients, other_coefficients):
-        if len(coefficients)==0 or len(other_coefficients)==0:
-            return np.zeros(0)
-        return chebyshev.chebmul(coefficients, other_coefficients)
-
-    def divide(self, coefficients, other_coefficients):
-        if len(other_coefficients)==0:
-            raise ValueError("Polynomial division by zero")
-        
-        q, r = chebyshev.chebdiv(coefficients, other_coefficients)
-        return q, r
-
-    def roots(self,coefficients):
-        if len(coefficients)<2:
-            return np.zeros(0)
-        a, b = self.interval
-        return chebyshev.chebroots(coefficients)*((b-a)/2.)+(a+b)/2.
-
-    def derivative(self, coefficients):
-        if len(coefficients)==0:
-            return np.zeros(0)
-        return chebyshev.chebder(coefficients)
-    def antiderivative(self, coefficients):
-        if len(coefficients)==0:
-            return np.zeros(0)
-        return chebyshev.chebint(coefficients)
-
+ChebyshevBasis = generate_basis("ChebyshevBasis",(-1,1),
+        X=[0,1], 
+        mul=chebyshev.chebmul, 
+        val=chebyshev.chebval, 
+        der=chebyshev.chebder,
+        int=chebyshev.chebint, 
+        div=chebyshev.chebdiv, 
+        roots=chebyshev.chebroots,
+        convert_function=convert_function)
 
 def _dct(x, type=2, axis=-1):
     """
