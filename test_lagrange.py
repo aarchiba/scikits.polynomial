@@ -35,16 +35,16 @@ def test_interpolating():
     assert equal_by_values(p1,p2)
 
 def test_standard():
-    for t in check_standard(LagrangeBasis(),coefficient_addition=False,division=False,roots=False):
+    for t in check_standard(LagrangeBasis(),coefficient_addition=False,division=True,roots=True):
         yield t
-    for t in check_standard(LagrangeBasis([1,3,-2]),coefficient_addition=False,division=False,roots=False):
+    for t in check_standard(LagrangeBasis([1,3,-2]),coefficient_addition=False,division=True,roots=True):
         yield t
 
 def test_power():
     b = LagrangeBasis()
     p = Polynomial([0,1],b)
     for i in range(16):
-        assert equal_by_values(p**i, reduce(lambda x, y: x*y, [p]*i, b.one()))
+        assert equal_by_values(p**i, reduce(lambda x, y: x*y, [p]*i, b.one))
 
 
 def test_from_roots():
@@ -53,6 +53,24 @@ def test_from_roots():
     p = lagrange_from_roots(r)
     assert_array_almost_equal(p(r),0)
 
+def test_division():
+    b = LagrangeBasis(range(10))
+    p1 = b.X**2
+    p2 = b.X**2-1
+    q, r = divmod(p1,p2)
+    assert equal_by_values(q,b.one)
+    assert equal_by_values(r,b.one)
+
+def test_companion_matrix():
+    b = LagrangeBasis(range(10))
+    p = b.X**5-1
+    M = p.companion_matrix()
+    for i in range(len(p.coefficients)-1):
+        c = np.zeros(len(p.coefficients)-1)
+        c[i] = 1
+        pb = Polynomial(c,b)
+        r = (pb*b.X) % p
+        assert_array_almost_equal(r.coefficients,M[:,i])
 
 def check_example(p,x,y):
     assert_almost_equal(p(x),y)
@@ -165,7 +183,7 @@ def check_perfidious(b):
         assert np.amax(np.abs(perfidious(np.arange(20)+1)))<1e-8*scale
 
 def check_one(b):
-    assert_array_almost_equal(b.one()(np.linspace(-1,1,10)), 1)
+    assert_array_almost_equal(b.one(np.linspace(-1,1,10)), 1)
 def check_X(b):
     xs = np.linspace(-1,1,10)
     assert_array_almost_equal(b.X()(xs), xs)

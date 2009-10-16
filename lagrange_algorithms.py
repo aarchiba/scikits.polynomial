@@ -218,17 +218,21 @@ def companion_matrix(points, values):
     dtype = _dtype(points, values)
     points = np.asarray(points, dtype=dtype)
     values = np.asarray(values, dtype=dtype)
-    if len(points)!=len(values):
-        raise ValueError("Must have exactly as many points as values")
+    if len(points)<len(values):
+        raise ValueError("Must have at least as many points as values")
+    points = points[:len(values)]
 
     # Discard quotient, keep remainder
-    M = division_matrix(points, values)[2:] 
+    M = division_matrix(points, values)[1:] 
+
+    # FIXME: this can probably be combined with M without matrix multiplication
+    # mX is multiplication by X
+    mX = np.eye(len(values))[:,:len(values)-1]
+    mX[-1,:] = evaluation_matrix(points[:len(values)-1],points[len(values)-1])
+    mX *= points[:,np.newaxis]
 
     # M is multiplication by X mod p
-    M *= points[:,np.newaxis] 
-
-    # Don't need degree==degree(p), so discard last value
-    M = division_matrix[:,:-1] 
+    M = np.dot(M,mX)
 
     assert M.shape[0] == M.shape[1]
     return M

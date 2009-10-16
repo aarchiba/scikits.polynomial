@@ -1,5 +1,7 @@
 import numpy as np
-import numpy.linalg
+import scipy.linalg as linalg
+
+import lagrange_algorithms
 
 class Polynomial(object):
     """Polynomial in the Lagrange basis.
@@ -34,31 +36,15 @@ class Polynomial(object):
         nor does the code use the analytic expression for the weights in
         the case that the points are Chebyshev points.
         """
-        if len(self.coefficients)==0:
-            return np.zeros(np.shape(x))
-        # should always be a no-op.
+
         self.basis.extend_points(len(self.coefficients))
         w = self.basis.weights(len(self.coefficients))
 
-        def evaluate_scalar(x):
-            # special case for when x is one of the given points
-            # FIXME: could be more efficient
-            c = x==self.basis.points[:len(self.coefficients)]
-            if np.any(c):
-                i = np.where(c)[0][0]
-                return self.coefficients[i]
-
-            wx = w/(x-self.basis.points[:len(self.coefficients)])
-            return np.sum(wx*self.coefficients)/np.sum(wx)
-
-        if not np.isscalar(x):
-            x = np.asarray(x)
-            r = np.zeros(x.shape)
-            for (ix, v) in np.ndenumerate(x):
-                r[ix] = evaluate_scalar(v)
-            return r
-        else:
-            return evaluate_scalar(x)
+        return lagrange_algorithms.evaluate(
+                self.basis.points,
+                self.coefficients,
+                x, 
+                existing_weights=w)
 
     def raise_degree(self, n):
         """Raise the degree to n.
@@ -78,12 +64,9 @@ class Polynomial(object):
             return self
         self.basis.extend_points(n)
         
-        new_coefficients = np.zeros(n)
-        new_coefficients[:len(self.coefficients)] = self.coefficients
-        if n>len(self.coefficients):
-            new_coefficients[len(self.coefficients):] = \
-                    self(self.basis.points[len(self.coefficients):
-                                           len(new_coefficients)])
+        new_coefficients = lagrange_algorithms.extend(self.basis.points, 
+                                                      self.coefficients, 
+                                                      n)
         return Polynomial(new_coefficients, self.basis)
 
 
@@ -110,10 +93,10 @@ class Polynomial(object):
         then does pointwise multiplication.
         """
         if len(self.coefficients)==0:
-            return self.basis.zero()
+            return self.basis.zero
         if isinstance(other,Polynomial):
             if len(other.coefficients)==0:
-                return self.basis.zero()
+                return self.basis.zero
             # Don't need other polynomial to be compatible
             l = len(self.coefficients)+len(other.coefficients)-1
             s = self.raise_degree(l)
@@ -133,9 +116,9 @@ class Polynomial(object):
         if power<0:
             raise ValueError("Cannot raise polynomials to negative powers")
         if power==0:
-            return self.basis.one()
+            return self.basis.one
         if len(self.coefficients)==0:
-            return self.basis.zero()
+            return self.basis.zero
 
         l = power*(len(self.coefficients)-1)+1
         p = self.raise_degree(l)
@@ -151,7 +134,7 @@ class Polynomial(object):
 
     def derivative(self):
         if len(self.coefficients)==0:
-            return self.basis.zero()
+            return self.basis.zero
 
         D = self.basis.derivative_matrix(len(self.coefficients))
         return Polynomial(np.dot(D,self.coefficients)[:-1],self.basis)
@@ -163,11 +146,8 @@ class Polynomial(object):
         thresh = 1e-13
 
         coefficients = self.raise_degree(len(self.coefficients)+1).coefficients
-        D = self.derivative_matrix(len(coefficients))
-        U, s, Vh = numpy.linalg.svd(D)
-        ss = 1./s
-        ss[s<thresh*s[0]] = 0
-        return Polynomial(reduce(np.dot,(Vh.T,np.diag(ss),U.T,coefficients)), self.basis)
+        A = self.basis.antiderivative_matrix(len(coefficients))
+        return Polynomial(np.dot(A,coefficients), self.basis)
 
     def __repr__(self):
         return "<Polynomial basis=%s coefficients=%s>" % (self.basis, self.coefficients)
@@ -183,15 +163,19 @@ class Polynomial(object):
         """
         if not self.iscompatible(other):
             raise IncompatibleBasesError("Polynomials in different bases cannot be divided")
-        raise NotImplementedError
-        return self.basis.polynomial(q), self.basis.polynomial(r)
+        self.basis.extend_points(len(self.coefficients))
+        q, r = lagrange_algorithms.divide(
+                self.basis.points,
+                self.coefficients,
+                other.coefficients)
+        return Polynomial(q,self.basis), Polynomial(r,self.basis)
 
     def __divmod__(self, other):
         if isinstance(other, Polynomial):
             return self.divide(other)
         else:
-            return (self.basis.polynomial(self.coefficients/other), 
-                    self.basis.polynomial([]))
+            return (Polynomial(self.coefficients/other,self.basis), 
+                    Polynomial([],self.basis))
             
     def __floordiv__(self, other):
         q, r = divmod(self, other)
@@ -208,6 +192,22 @@ class Polynomial(object):
         return (1./other)*self
     def __rtruediv__(self,other):
         raise ValueError("Cannot do true division by polynomials")
+
+    def companion_matrix(self):
+        self.basis.extend_points(len(self.coefficients))
+        return lagrange_algorithms.companion_matrix(
+            self.basis.points,
+            self.coefficients)
+
+
+    def roots(self):
+        if len(self.coefficients)==0:
+            raise ValueError("Cannot find roots of the zero polynomial")
+        elif len(self.coefficients)==1:
+            return np.zeros(0)
+        return linalg.eigvals(lagrange_algorithms.companion_matrix(
+            self.basis.points,
+            self.coefficients))
 
 
 
@@ -293,14 +293,15 @@ class LagrangeBasis(object):
         else:
             self.interval = interval
         self.first_chebyshev_point_not_tried = 0
+        self.weights_cache = [[]]
 
-    def zero(self):
-        return Polynomial([],self)
-    def one(self):
-        return Polynomial([1],self)
-    def X(self):
+        self.zero = Polynomial([],self)
+        self.one = Polynomial([1],self)
         self.extend_points(2)
-        return Polynomial([self.points[0],self.points[1]],self)
+        self.X = Polynomial([self.points[0],self.points[1]],self)
+
+    def from_roots(self, roots):
+        return reduce(lambda x, y: x*y, [self.X-r for r in roots], self.one)
 
     def __eq__(self, other):
         return isinstance(other, LagrangeBasis) and self.initial_points == other.initial_points
@@ -336,32 +337,26 @@ class LagrangeBasis(object):
         if n is None:
             n=len(self.points)
         self.extend_points(n)
-        # FIXME: might be worth caching the weights
-        # FIXME: if we use Chebyshev points, there's an analytic formula
-        w = np.zeros(n)
-        w[0] = 1
-        for j in range(1,n):
-            w[:j] *= self.points[:j]-self.points[j]
-            w[j] = np.prod(self.points[j]-self.points[:j])
-        w = 1./w
-        return w
+        for m in range(len(self.weights_cache),n+1):
+            self.weights_cache.append(
+                    lagrange_algorithms.weights(
+                        self.points[:m],
+                        self.weights_cache[-1]))
+        return self.weights_cache[n]
 
     def derivative_matrix(self, n):
         self.extend_points(n)
-        w = self.weights(n)
-        x = self.points[:n]
-        D = (w/w[:,np.newaxis])/(x[:,np.newaxis]-x)
-        D[np.arange(n),np.arange(n)] = 0
-        D[np.arange(n),np.arange(n)] = -np.sum(D,axis=1)
-        return D
-
+        return lagrange_algorithms.derivative_matrix(self.points[:n])
+    def antiderivative_matrix(self, n):
+        self.extend_points(n+1)
+        return linalg.pinv(lagrange_algorithms.derivative_matrix(self.points[:n+1]))
 
     def convert(self, polynomial):
         n = len(polynomial.coefficients)
         if n==0:
-            return self.zero()
+            return self.zero
         self.extend_points(n)
-        return self.polynomial(polynomial(self.points[:n]))
+        return Polynomial(polynomial(self.points[:n]),self)
 
     def __repr__(self):
         return "<LagrangeBasis initial_points=%s>" % (self.initial_points,)
@@ -373,11 +368,7 @@ def lagrange_from_roots(roots, interval=None):
     # result more-or-less directly.
     ur = np.unique(roots)
     b = LagrangeBasis(np.unique(roots),interval=interval)
-    X = b.X()
-    r = b.one()
-    for rt in roots:
-        r *= X-rt
-    return r
+    return b.from_roots(roots)
 
 def polyfit(x, y, deg, basis=None):
     """Least-squares polynomial fit.
@@ -399,7 +390,7 @@ def polyfit(x, y, deg, basis=None):
         pc[i] = 1
         A[:,i] = basis.polynomial(pc)(x)
 
-    c, resids, rank, s = numpy.linalg.lstsq(A, y)
+    c, resids, rank, s = linalg.lstsq(A, y)
     p = 0
     return basis.polynomial(c)
 
