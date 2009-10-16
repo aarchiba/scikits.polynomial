@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.linalg
 
 
 def _dtype(*arrays):
@@ -40,6 +41,7 @@ def evaluate(points, values, x, existing_weights=None):
     """Evaluate the interpolating polynomial by barycentric interpolation.
 
     """
+    # FIXME: allow complex values but real variables
     dtype = _dtype(points, values, x, existing_weights)
     points = np.asarray(points,dtype=dtype)
     if len(points.shape)!=1:
@@ -102,6 +104,26 @@ def evaluation_matrix(points, x, existing_weights=None):
         p[r] = 1
     return p
 
+def extend(points, values, n):
+    """Extend the array values to length n by evaluating the interpolating polynomial.
+
+    """
+    points = np.asarray(points)
+    values = np.asarray(values)
+    vs = np.array(values.shape)
+    if n>len(points):
+        raise ValueError("Not enough values in points to interpolate %d values" % n)
+    if vs[0]==n:
+        return values
+    elif vs[0]>n:
+        raise ValueError("extend() cannot truncate values")
+    vs[0] = n
+    v = np.empty(vs, dtype=_dtype(values))
+    v[:values.shape[0]] = values
+    v[values.shape[0]:] = evaluate(points, values, points[values.shape[0]:n])
+
+    return v
+
 def derivative_matrix(points, existing_weights=None):
     """Construct the derivative matrix.
 
@@ -144,20 +166,71 @@ def divide(points, p1_values, p2_values, p1_degree=None, p2_degree=None,
     if p2_degree is None:
         p2_degree = len(p2_values)-1
 
-    p2_values = evaluate(points[:len(p2_values)], p2_values, 
-                         points[:len(p1_values)])
+    if p1_degree<p2_degree:
+        # division should be trivial
+        return np.zeros(0,dtype=dtype), p1_values
+    p2_values = extend(points, p2_values, len(p1_values))
     
     if len(points)-1<max(p1_degree,p2_degree):
         raise ValueError("not enough points to specify a polynomial of degree %d" % max(p1_degree,p2_degree))
 
-    q_degree = p1_degree-p2_degree
-    q_eval_matrix = evaluation_matrix(points[:q_degree+1],
-                                      points[:len(p1_values)])
-    r_degree = p2_degree-1
-    r_eval_matrix = evaluation_matrix(points[:r_degree+1],
-                                      points[:len(p1_values)])
-    
-    q_plus_r_matrix = np.hstack((q_eval_matrix*p2_values[:,np.newaxis],
-                                 r_eval_matrix))
-    qr, res, rk, s = np.linalg.lstsq(q_plus_r_matrix,p1_values,rcond=rcond)
+    q_degree = p1_degree - p2_degree
+    qr = np.dot(division_matrix(points[:len(p1_values)], p2_values, p2_degree),
+                p1_values)
+
     return qr[:q_degree+1], qr[q_degree+1:]
+
+def division_matrix(points, p_values, p_degree=None):
+    """Compute the matrix for division by a polynomial.
+    
+    If p1 has values p1_values on points, then this function returns a matrix
+    M for which M*p1_values = [q_values, r_values], that is, multiplying
+    the values of p1 by M gives a vector of the values of the quotient 
+    followed by the values of the remainder, each evaluated on just enough
+    points to represent them.
+    
+    """
+    dtype = _dtype(points, p_values)
+
+    points = np.asarray(points, dtype=dtype)
+    if p_degree is None:
+        p_degree = len(p_values)-1
+    p_values = extend(points, p_values, len(points))
+
+    q_degree = len(points)-1-p_degree
+    q_eval_matrix = evaluation_matrix(points[:q_degree+1],
+                                      points[:len(points)])
+    r_degree = p_degree-1
+    r_eval_matrix = evaluation_matrix(points[:r_degree+1],
+                                      points[:len(points)])
+    
+    q_plus_r_matrix = np.hstack((q_eval_matrix*p_values[:,np.newaxis],
+                                 r_eval_matrix))
+    
+    return scipy.linalg.pinv(q_plus_r_matrix)
+
+def companion_matrix(points, values):
+    """Compute the companion matrix of a polynomial.
+
+    The eigenvalues of the companion matrix are the roots of the polynomial.
+    
+    """
+    dtype = _dtype(points, values)
+    points = np.asarray(points, dtype=dtype)
+    values = np.asarray(values, dtype=dtype)
+    if len(points)!=len(values):
+        raise ValueError("Must have exactly as many points as values")
+
+    # Discard quotient, keep remainder
+    M = division_matrix(points, values)[2:] 
+
+    # M is multiplication by X mod p
+    M *= points[:,np.newaxis] 
+
+    # Don't need degree==degree(p), so discard last value
+    M = division_matrix[:,:-1] 
+
+    assert M.shape[0] == M.shape[1]
+    return M
+
+
