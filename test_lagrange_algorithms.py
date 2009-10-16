@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.testing import assert_array_almost_equal, assert_almost_equal, assert_array_equal
+from numpy.testing import assert_array_almost_equal, assert_almost_equal, assert_array_equal, assert_equal
 
 from lagrange_algorithms import *
 
@@ -38,6 +38,15 @@ def test_weights_incremental():
         existing_weights = weights(pts[:i], existing_weights)
         assert_array_equal(existing_weights, weights(pts[:i]))
 
+def test_weights_null():
+    assert_array_equal(weights([]),[])
+
+def test_evaluate_too_many_points():
+    points = np.arange(10)
+    values = np.arange(4)
+    xs = np.linspace(0,1,20)
+    assert_array_equal(evaluate(points,values,xs),
+                       evaluate(points[:len(values)],values,xs))
 def check_evaluate_values(f,points,xs):
     xs = np.asarray(xs)
     points = np.asarray(points)
@@ -54,11 +63,27 @@ def test_evaluate_values():
             ]:
         yield check_evaluate_values, f, points, xs
 
+def test_evaluate_null():
+    assert_equal(evaluate([],[],0),0)
 def test_evaluate_shape():
     for s in [(), (1,), (2,), (10,), (1,2), (2,2), (2,1), (3,5,1,1),
               (0,), (0,2), (3,0,2)]:
         yield check_shape, lambda x: evaluate([1,2,3],[4,5,6],x), s, s
 
+def check_evaluation_matrix(points,values,x):
+    assert_array_almost_equal(
+            evaluate(points, values, x),
+            np.dot(evaluation_matrix(points, x), values))
+def test_evaluation_matrix():
+    for (p, v) in [([1,2],[1,5]),
+                   ([1], [2]),
+                   ([], []),
+                   ([1,2,3j],[1,2j,1]),
+                   ]:
+        yield check_evaluation_matrix, p, v, np.linspace(0,1,5)
+    
+    
+    
 def test_derivative_matrix():
     for (f,df,points) in [(lambda x: x**2, lambda x: 2*x, [0,1,2]),
                           (lambda x: 3*x**2-2*x+1, lambda x: 6*x-2, [0,1,2]),
@@ -70,3 +95,21 @@ def test_derivative_matrix():
         dvalues = df(points)
         D = derivative_matrix(points)
         assert_array_almost_equal(dvalues,np.dot(D,values))
+
+def check_division(p1, p2):
+    points = np.arange(20)
+    xs = np.linspace(-1,1,20)
+    q, r = divide(points, p1, p2)
+    assert len(r)<len(p2)
+    assert_array_almost_equal(evaluate(points,p1,xs), 
+            evaluate(points,p2,xs)*evaluate(points,q,xs)+evaluate(points,r,xs))
+
+def test_division():
+    for (p1, p2) in [
+            ([1,2,3],[1,2]),
+            ([1,2,3,4],[1,2]),
+            ([1,2],[1,2]),
+            ([1,2],[1,2,3]),
+            ([1,2],[1]),
+            ]:
+        yield check_division, p1, p2

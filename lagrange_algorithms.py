@@ -45,12 +45,13 @@ def evaluate(points, values, x, existing_weights=None):
     if len(points.shape)!=1:
         raise ValueError("evaluate() must be supplied a one-dimensional array of points")
     values = np.asarray(values,dtype=dtype)
-    if len(values.shape)<1 or values.shape[0]!=points.shape[0]:
-        raise ValueError("values must have the same size along its first dimension as points")
+    if len(values.shape)<1 or values.shape[0]>points.shape[0]:
+        raise ValueError("Not enough points specified for values")
+    points = points[:values.shape[0]]
     x = np.asarray(x,dtype=dtype)
 
     w = weights(points, existing_weights)
-    if x.size == 0:
+    if x.size == 0 or len(points)==0:
         return np.zeros(x.shape+values.shape[1:],dtype=values.dtype)
     c = x[...,np.newaxis]-points
     z = c==0
@@ -67,7 +68,48 @@ def evaluate(points, values, x, existing_weights=None):
         p[r[:-1]] = values[r[-1]]
     return p
 
+def evaluation_matrix(points, x, existing_weights=None):
+    """Construct the "evaluation matrix" for a set of points.
+
+    The evaluation matrix maps a collection of values, one for each point,
+    to the value of the interpolating polynomial at some other points. 
+    Put another way, the evaluation matrix is what you would get by
+    successively interpolating (1,0,0,...,0), (0,1,0,...,0), ... (0,0,0,...,1).
+
+    """
+    dtype = _dtype(points, x, existing_weights)
+    points = np.asarray(points,dtype=dtype)
+    if len(points.shape)!=1:
+        raise ValueError("evaluate() must be supplied a one-dimensional array of points")
+    x = np.asarray(x,dtype=dtype)
+
+    w = weights(points, existing_weights)
+    if x.size == 0:
+        return np.zeros(x.shape+(len(points),),dtype=values.dtype)
+    c = x[...,np.newaxis]-points
+    z = c==0
+    c[z] = 1
+    c = w/c
+    p = c/np.sum(c,axis=-1)[...,np.newaxis]
+    # Now fix where x==some xi
+    r = np.nonzero(z)
+    if len(r)==1: # evaluation at a scalar
+        if len(r[0])>0: # equals one of the points
+            p = np.zeros(len(points),dtype=dtype)
+            p[r[0][0]] = 1
+    else:
+        p[r[:-1]] = 0
+        p[r] = 1
+    return p
+
 def derivative_matrix(points, existing_weights=None):
+    """Construct the derivative matrix.
+
+    The derivative matrix maps a collection of values, one for each point,
+    to the derivative of the interpolating polynomial evaluated at each
+    point. 
+
+    """
     dtype = _dtype(points, existing_weights)
     points = np.asarray(points,dtype=dtype)
 
@@ -83,3 +125,39 @@ def derivative_matrix(points, existing_weights=None):
     D[np.arange(n),np.arange(n)] = -np.sum(D,axis=1)
     return D
 
+def divide(points, p1_values, p2_values, p1_degree=None, p2_degree=None, 
+        rcond=-1):
+    """Divide two polynomials to give a quotient and remainder.
+
+    This code does the division by a brute-force approach, constructing
+    a matrix mapping (q,r) -> q*p2+r and then doing a least-squares fit
+    for q and r. This should be numerically stable but slow.
+    """
+    dtype = _dtype(points, p1_values, p2_values)
+
+    points = np.asarray(points, dtype=dtype)
+    p1_values = np.asarray(p1_values, dtype=dtype)
+    p2_values = np.asarray(p2_values, dtype=dtype)
+
+    if p1_degree is None:
+        p1_degree = len(p1_values)-1
+    if p2_degree is None:
+        p2_degree = len(p2_values)-1
+
+    p2_values = evaluate(points[:len(p2_values)], p2_values, 
+                         points[:len(p1_values)])
+    
+    if len(points)-1<max(p1_degree,p2_degree):
+        raise ValueError("not enough points to specify a polynomial of degree %d" % max(p1_degree,p2_degree))
+
+    q_degree = p1_degree-p2_degree
+    q_eval_matrix = evaluation_matrix(points[:q_degree+1],
+                                      points[:len(p1_values)])
+    r_degree = p2_degree-1
+    r_eval_matrix = evaluation_matrix(points[:r_degree+1],
+                                      points[:len(p1_values)])
+    
+    q_plus_r_matrix = np.hstack((q_eval_matrix*p2_values[:,np.newaxis],
+                                 r_eval_matrix))
+    qr, res, rk, s = np.linalg.lstsq(q_plus_r_matrix,p1_values,rcond=rcond)
+    return qr[:q_degree+1], qr[q_degree+1:]
