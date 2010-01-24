@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.testing import assert_array_almost_equal, assert_almost_equal, assert_array_equal, assert_equal
 
+from nose.tools import raises
+
 from lagrange_algorithms import *
 
 def check_shape(f, in_shape, out_shape):
@@ -14,8 +16,21 @@ def check_output_dtype(f, x, dtype):
 def check_lists(f, in_):
     assert_array_equal(f(list(in_)),f(np.array(in_)))
 
+@raises(ValueError)
+def test_weights_raises():
+    weights([[1,2,3],[4,5,6]])
 
+@raises(ValueError)
+def test_evaluate_raises():
+    evaluate([[1,2,3],[4,5,6]],[[1,2,3],[4,5,6]],0)
 
+@raises(ValueError)
+def test_evaluate_raises_2():
+    evaluate([1,2,3],[1,2,3,4,5,6],0)
+
+@raises(ValueError)
+def test_evaluate_raises_3():
+    evaluate([1,2,3],1,0)
 
 def test_weights_shape():
     for l in [0,1,2,10]:
